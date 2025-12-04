@@ -75,7 +75,6 @@ class JigglerFinder:
             "disable screen lock"
         ]
         
-        # Skip repos containing these keywords
         self.exclude_keywords = [
             "owasp",
             "security-list",
@@ -98,7 +97,6 @@ class JigglerFinder:
         
         resp = requests.get(url, headers=self.headers, params=params)
         if resp.status_code == 403:
-            print(f"# Rate limited, waiting 60s...", flush=True)
             time.sleep(60)
             resp = requests.get(url, headers=self.headers, params=params)
         if resp.status_code != 200:
@@ -107,11 +105,7 @@ class JigglerFinder:
         return resp.json().get("items", [])
 
     def run(self):
-        print("# Mouse Jiggler Repos", flush=True)
-        print("#" + "=" * 50, flush=True)
-        
         for term in self.search_terms:
-            print(f"# Searching: {term}", flush=True)
             repos = self.search_repos(term)
             
             for repo in repos:
@@ -127,8 +121,6 @@ class JigglerFinder:
                 print(repo_url, flush=True)
                 
             time.sleep(3)
-        
-        print(f"#\n# Total unique repos: {len(self.seen_repos)}", flush=True)
 
 
 if __name__ == "__main__":
