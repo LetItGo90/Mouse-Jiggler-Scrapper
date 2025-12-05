@@ -277,14 +277,12 @@ https://gitlab.com/jaanonim-recrutation/spyrosoft/frontend
 https://gitlab.com/artfificial-intelligence/dspy/dspy/learn-dspy
 https://gitlab.com/rhtap-qe/backend-tests-go-wnymspyf
 https://gitlab.com/rhtap-qe/backend-tests-go-wnymspyf-gitops
-https://gitlab.com/artfificial-intelligence/prompt-engineering/gentle-introduction-to-dspy
 https://github.com/rprokap/pset-9
 https://github.com/ManojKumarPatnaik/Major-project-list
 https://github.com/isaacdarcilla/payroll
 https://github.com/narender-rk10/MyRemoteDesk-Complete-Workspace-Integrated-Platform
 https://github.com/thinakaranmanokaran/In-Out
 https://github.com/eccentriccoder01/SaralSeva
-https://gitlab.com/hooman1250/restaurant-management-systems
 https://gitlab.com/hojintao/pulsarc2
 https://gitlab.com/smart_technology/employee_monitoring
 https://gitlab.com/rubayetislam16/team_tracker
@@ -293,9 +291,7 @@ https://gitlab.com/group12540714/monitoring_employees
 https://gitlab.com/getachewgetu/Computer_Vision-Based-Authentication-and-Employee-Monitoring-System
 https://gitlab.com/ihtisham914/community-cleanup
 https://gitlab.com/deepikaRangasamy/employeemonitoring-ms
-https://github.com/CadyLinn/Library_Login_Record
 https://github.com/yqmark/agreement
 https://github.com/SwedbankAB/Swedbank
 https://github.com/Nikhil-Kherajani/Eye-Saver
 https://github.com/nss-ivory-trolls/WorkforceManagement
-https://github.com/MYahya3/Attendance-Tracking-System-Using-Computer-Vision
