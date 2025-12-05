@@ -481,11 +481,7 @@ https://github.com/R-a-dio/Hanyuu-sama
 https://github.com/kukuvitaminekcz58/binance-trading-bot
 https://github.com/sogoeslight/ValorantBot
 https://gitlab.com/Tausifgami2/afkbot
-https://gitlab.com/cvasu-showcase/spark-for-batch-streaming-market-analysis-kafka-pipeline
 https://gitlab.com/EthrealcraftX/Afk-Telegram-Bot
-https://gitlab.com/EthrealcraftX/Minecraft-java-bedrock-Afk-bot-website
-https://gitlab.com/hkrishna27/writing-custom-kafka-connectors
-https://gitlab.com/silverfisher75/afk-bot
 https://gitlab.com/Majed166353/spring-boot-kafka
 https://gitlab.com/npe4/kafka-bot-lib
 https://gitlab.com/greennafri/afk-bot
@@ -495,17 +491,12 @@ https://github.com/letsmokee/ApexXPFarmer
 https://github.com/Cracko298/Sharkbite-2-Farmer
 https://github.com/Nick2bad4u/BHBot
 https://github.com/Scruffy556/D2-Forge-Farmer
-https://github.com/Kanekovisks/AFK-GEM-FARM-Anime-Vanguards-1680x1050
 https://github.com/cchhaarroonn/SF-Bot
 https://github.com/JonZavialov/pigman-farmer
 https://github.com/Mra1k3r0/octant-farmer
-https://github.com/cirosantilli/china-dictatorship
 https://github.com/gege-circle/.github
 https://github.com/d-krupke/cpsat-primer
 https://github.com/makelove/Taobao_topsdk
-https://github.com/cirosantilli/china-dictatroship-7
-https://github.com/cheezcharmer/chinese-dictatorship
-https://github.com/R7w726fYrfritM7zPJCO/cihna-dictatorshrip-8
 https://github.com/panbinibn/OpenPacketFix_
 https://github.com/cps-org/cps
 https://github.com/zpc1314521/PCL2
@@ -520,7 +511,6 @@ https://github.com/dfraser74/magento2-marketplace-social-login
 https://github.com/luca28pet/PreciseCpsCounter
 https://github.com/payMeQuiz/payMe-Project
 https://github.com/BadlionClient/BadlionClientCPSAPI
-https://github.com/ZulqarnainZilli/-9-Email-Marketing-Tips-For-Content-Marketers
 https://github.com/Jorgebyte/SystemCps
 https://github.com/Av1v7/CPSTest
 https://github.com/pollockjj/ComfyUI-MultiGPU
