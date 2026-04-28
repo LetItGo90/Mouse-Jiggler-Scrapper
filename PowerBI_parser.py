@@ -19,9 +19,9 @@ COL_COMMENTS = "Comments"
 COL_ACF2ID = "ACF2ID"
 COL_ANALYSIS_COMP = "AnalysisCompletionDate"
 COL_ALLEGATION = "Original_Allegation"
-COL_PEER_START = "Peer_Review_Start"
-COL_PEER_END = "Peer_Review_End"
-COL_SIGNOFF = "Sign-off status"
+
+# Valid statuses — add more if needed
+VALID_STATUSES = ["non-issue", "issue"]
 
 DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 
@@ -117,7 +117,7 @@ def check_duplicates(df):
 
 
 def check_status(df):
-    """Check for tickets not in expected final status."""
+    """Check for tickets not marked as Issue or Non-Issue."""
     print("\n[3] STATUS CHECK")
     issues = []
     if COL_STATUS not in df.columns:
@@ -130,13 +130,11 @@ def check_status(df):
     for s, c in status_counts.items():
         print(f"     • {s}: {c}")
 
-    # Flag anything not "Closed" or "Completed" — adjust these as needed
-    expected_closed = ["closed", "completed", "resolved"]
-    not_closed = ~statuses.isin(expected_closed)
-    count = not_closed.sum()
+    invalid = ~statuses.isin(VALID_STATUSES)
+    count = invalid.sum()
     if count > 0:
-        print(f"\n  ⚠️  {count} ticket(s) NOT in a closed/completed status:")
-        for idx in df.index[not_closed][:10]:
+        print(f"\n  ⚠️  {count} ticket(s) with invalid status (expected 'Issue' or 'Non-Issue'):")
+        for idx in df.index[invalid][:10]:
             sid = df.at[idx, COL_SESSION_ID] if COL_SESSION_ID in df.columns else "?"
             st = df.at[idx, COL_STATUS]
             print(f"     • Row {idx}, Session {sid}: status = '{st}'")
@@ -145,10 +143,11 @@ def check_status(df):
                 "Field": "Status",
                 "Row": idx,
                 "Session ID": sid,
-                "Detail": f"Status is '{st}', expected closed/completed"
+                "Detail": f"Status is '{st}', expected Issue or Non-Issue"
             })
     else:
-        print(f"\n  ✅ All tickets in closed/completed status")
+        print(f"\n  ✅ All tickets have valid status (Issue or Non-Issue)")
+
     return issues
 
 
@@ -213,61 +212,6 @@ def check_dates(df, week_start=None):
     return issues
 
 
-def check_peer_review(df):
-    """Check peer review fields."""
-    print("\n[5] PEER REVIEW CHECK")
-    issues = []
-
-    has_start = COL_PEER_START in df.columns
-    has_end = COL_PEER_END in df.columns
-    has_signoff = COL_SIGNOFF in df.columns
-
-    if not has_start and not has_end:
-        print("  ⚠️  Peer review columns not found, skipping")
-        return issues
-
-    if has_start and has_end:
-        start_filled = df[COL_PEER_START].notna() & (df[COL_PEER_START].str.strip() != "")
-        end_filled = df[COL_PEER_END].notna() & (df[COL_PEER_END].str.strip() != "")
-
-        started_not_ended = start_filled & ~end_filled
-        if started_not_ended.sum() > 0:
-            print(f"  ⚠️  {started_not_ended.sum()} ticket(s) have Peer Review Start but NO End")
-            for idx in df.index[started_not_ended][:5]:
-                sid = df.at[idx, COL_SESSION_ID] if COL_SESSION_ID in df.columns else "?"
-                issues.append({
-                    "Check": "Peer Review",
-                    "Field": "Peer_Review_End",
-                    "Row": idx,
-                    "Session ID": sid,
-                    "Detail": "Peer review started but not ended"
-                })
-
-        no_review = ~start_filled & ~end_filled
-        if no_review.sum() > 0:
-            print(f"  ⚠️  {no_review.sum()} ticket(s) have NO peer review at all")
-        else:
-            print("  ✅ All tickets have peer review entries")
-
-    if has_signoff:
-        signoff = df[COL_SIGNOFF].str.strip().str.lower()
-        not_signed = signoff.isna() | (signoff == "") | (~signoff.isin(["approved", "signed off", "yes", "complete"]))
-        if not_signed.sum() > 0:
-            print(f"  ⚠️  {not_signed.sum()} ticket(s) not signed off")
-            for idx in df.index[not_signed][:5]:
-                sid = df.at[idx, COL_SESSION_ID] if COL_SESSION_ID in df.columns else "?"
-                val = df.at[idx, COL_SIGNOFF]
-                issues.append({
-                    "Check": "Sign-off",
-                    "Field": "Sign-off status",
-                    "Row": idx,
-                    "Session ID": sid,
-                    "Detail": f"Sign-off = '{val}'"
-                })
-
-    return issues
-
-
 def get_sp_daily_counts(df):
     """Get daily alert counts from SharePoint data."""
     if COL_ALERT_DATE not in df.columns:
@@ -299,7 +243,7 @@ def get_observeit_input():
 def compare_counts(sp_daily, sp_total, oi_daily, oi_total):
     """Compare SharePoint vs ObserveIT counts."""
     issues = []
-    print("\n[6] SHAREPOINT vs OBSERVEIT COMPARISON")
+    print("\n[5] SHAREPOINT vs OBSERVEIT COMPARISON")
 
     # Totals
     print(f"\n  SharePoint total: {sp_total}  |  ObserveIT total: {oi_total}")
@@ -368,7 +312,6 @@ def main():
     all_issues += check_duplicates(df)
     all_issues += check_status(df)
     all_issues += check_dates(df, week_start)
-    all_issues += check_peer_review(df)
 
     # --- SharePoint daily counts ---
     sp_daily = get_sp_daily_counts(df)
