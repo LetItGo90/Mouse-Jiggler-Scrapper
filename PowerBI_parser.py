@@ -1,283 +1,261 @@
+import pandas as pd
+import numpy as np
+import os
+from datetime import datetime, timedelta
+
 # ==============================================================
 #   Proofpoint vs SharePoint Counter + Discrepancy Analyzer
 # ==============================================================
 
-$DefaultCsvPath = ".\alerts_export.csv"
+DEFAULT_CSV_PATH = "./alerts_export.csv"
 
 # ---- HELPERS ----
 
-function Get-WeekDates {
-    $today = Get-Date
-    $dow = [int]$today.DayOfWeek
-    if ($dow -eq 0) { $dow = 7 }
-    $monday = $today.AddDays(1 - $dow)
-    return 0..6 | ForEach-Object { $monday.AddDays($_) }
-}
+def get_week_dates():
+    today = datetime.today()
+    dow = today.weekday()  # Monday=0
+    monday = today - timedelta(days=dow)
+    return [monday + timedelta(days=i) for i in range(7)]
 
-function Parse-AnyDate([string]$val) {
-    if ([string]::IsNullOrWhiteSpace($val)) { return $null }
-    $d = [datetime]::MinValue
-    if ([datetime]::TryParse($val.Trim(), [ref]$d)) { return $d }
-    return $null
-}
+def get_biz_day_diff(from_date, to_date):
+    n = 0
+    cur = from_date.date() + timedelta(days=1)
+    while cur <= to_date.date():
+        if cur.weekday() < 5:
+            n += 1
+        cur += timedelta(days=1)
+    return n
 
-function Get-BizDayDiff([datetime]$from, [datetime]$to) {
-    $n = 0; $cur = $from.Date
-    while ($cur -lt $to.Date) {
-        $cur = $cur.AddDays(1)
-        if ($cur.DayOfWeek -ne 'Saturday' -and $cur.DayOfWeek -ne 'Sunday') { $n++ }
-    }
-    return $n
-}
+def is_suspicious(val):
+    if pd.isna(val) or str(val).strip() == '':
+        return True
+    t = str(val).strip().lower()
+    return t in ['_empty','n/a','none','null','unknown','-','na'] or len(t) <= 1
 
-function IsSuspicious([string]$val) {
-    if ([string]::IsNullOrWhiteSpace($val)) { return $true }
-    $t = $val.Trim().ToLower()
-    return ($t -in '_empty','n/a','none','null','unknown','-','na' -or $t.Length -le 1)
-}
-
-function Get-SessionNum([string]$id) {
-    # Handles "CAI-26012035" or plain numbers
-    $num = $id -replace '[^\d]', ''
-    if ($num) { return [long]$num } else { return [long]0 }
-}
+def get_session_num(sid):
+    if pd.isna(sid):
+        return 0
+    num = ''.join(filter(str.isdigit, str(sid)))
+    return int(num) if num else 0
 
 # ---- LOAD CSV ----
 
-$csvPath = $DefaultCsvPath
-if (-not (Test-Path $csvPath)) {
-    $csvPath = Read-Host "CSV not found. Enter path to alerts_export.csv"
-    if (-not (Test-Path $csvPath)) {
-        Write-Host "File not found. Exiting." -ForegroundColor Red
-        exit
-    }
-}
+csv_path = DEFAULT_CSV_PATH
+if not os.path.exists(csv_path):
+    csv_path = input("CSV not found. Enter path to alerts_export.csv: ").strip()
+    if not os.path.exists(csv_path):
+        print("File not found. Exiting.")
+        exit()
 
-$allRows   = Import-Csv $csvPath
-$weekDates = Get-WeekDates
-$dayNames  = 'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'
+df = pd.read_csv(csv_path)
+df['Alert Date'] = pd.to_datetime(df['Alert Date'], errors='coerce')
+
+week_dates = get_week_dates()
+day_names  = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 
 # ---- COUNT SP PER DAY ----
 
-$spCounts = @{}
-for ($i = 0; $i -le 6; $i++) {
-    $d = $weekDates[$i]
-    $spCounts[$i] = @($allRows | Where-Object {
-        $ad = Parse-AnyDate $_.'Alert Date'
-        $ad -and $ad.Date -eq $d.Date
-    }).Count
-}
-$totalSP = ($spCounts.Values | Measure-Object -Sum).Sum
+sp_counts = {}
+for i, d in enumerate(week_dates):
+    sp_counts[i] = len(df[df['Alert Date'].dt.date == d.date()])
 
-Write-Host ""
-Write-Host ("─" * 54)
-Write-Host ("  SharePoint Total this week: {0}" -f $totalSP)
-Write-Host ("─" * 54)
+total_sp = sum(sp_counts.values())
+
+print()
+print("─" * 54)
+print(f"  SharePoint Total this week: {total_sp}")
+print("─" * 54)
 
 # ---- ENTER PP COUNTS ----
 
-$yn = Read-Host "`nEnter Proofpoint counts per day? (y/n)"
-if ($yn -ne 'y') { Write-Host "Done."; exit }
+yn = input("\nEnter Proofpoint counts per day? (y/n): ").strip().lower()
+if yn != 'y':
+    print("Done.")
+    exit()
 
-Write-Host ""
-Write-Host ("=" * 60)
-Write-Host ("{0,-12}{1,-14}{2,-12}{3,-10}{4}" -f "Day","Date","Proofpoint","SharePoint","Status")
-Write-Host ("=" * 60)
+print()
+print("=" * 60)
+print(f"{'Day':<12}{'Date':<14}{'Proofpoint':<12}{'SharePoint':<12}Status")
+print("=" * 60)
 
-$ppCounts = @{}
-for ($i = 0; $i -le 6; $i++) {
-    $d    = $weekDates[$i]
-    $name = $dayNames[$i]
-    $raw  = Read-Host ("  {0} ({1}) - PP count (Enter to skip)" -f $name, $d.ToString('MM/dd'))
+pp_counts = {}
+for i, d in enumerate(week_dates):
+    name = day_names[i]
+    raw  = input(f"  {name} ({d.strftime('%m/%d')}) - PP count (Enter to skip): ").strip()
 
-    if ([string]::IsNullOrWhiteSpace($raw)) { $ppCounts[$i] = $null; continue }
+    if not raw:
+        pp_counts[i] = None
+        continue
 
-    $pp = [int]$raw
-    $sp = $spCounts[$i]
-    $ppCounts[$i] = $pp
+    pp = int(raw)
+    sp = sp_counts[i]
+    pp_counts[i] = pp
 
-    $diff   = $sp - $pp
-    $status = if ($diff -eq 0) { "✓" } elseif ($diff -gt 0) { "X  SP +$diff" } else { "X  PP +$([Math]::Abs($diff))" }
+    diff = sp - pp
+    if diff == 0:
+        status = "✓"
+    elif diff > 0:
+        status = f"X  SP +{diff}"
+    else:
+        status = f"X  PP +{abs(diff)}"
 
-    Write-Host ("{0,-12}{1,-14}{2,-12}{3,-10}{4}" -f $name, $d.ToString('MM/dd/yyyy'), $pp, $sp, $status)
-}
+    print(f"  {name:<12}{d.strftime('%m/%d/%Y'):<14}{pp:<12}{sp:<12}{status}")
 
-$totalPP = ($ppCounts.Values | Where-Object { $_ -ne $null } | Measure-Object -Sum).Sum
-Write-Host ("─" * 60)
-Write-Host ("{0,-26}{1,-12}{2}" -f "TOTAL", $totalPP, $totalSP)
-Write-Host ""
+total_pp = sum(v for v in pp_counts.values() if v is not None)
+print("─" * 60)
+print(f"{'TOTAL':<26}{total_pp:<12}{total_sp}")
+print()
 
 # ---- FIND DISCREPANCIES ----
 
-$badDays = 0..6 | Where-Object { $ppCounts[$_] -ne $null -and $ppCounts[$_] -ne $spCounts[$_] }
+bad_days = [i for i in range(7) if pp_counts.get(i) is not None and pp_counts[i] != sp_counts[i]]
 
-if (-not $badDays) {
-    Write-Host "✓ All counts match!" -ForegroundColor Green
-    Write-Host "Done."
-    exit
-}
+if not bad_days:
+    print("✓ All counts match!")
+    print("Done.")
+    exit()
 
-Write-Host "⚠  DISCREPANCIES FOUND:" -ForegroundColor Yellow
-foreach ($i in $badDays) {
-    $diff = $spCounts[$i] - $ppCounts[$i]
-    $dir  = if ($diff -gt 0) { "SP EXTRA $diff" } else { "PP EXTRA $([Math]::Abs($diff))" }
-    Write-Host ("   {0} ({1}): {2}  [PP={3} vs SP={4}]" -f `
-        $dayNames[$i], $weekDates[$i].ToString('MM/dd'), $dir, $ppCounts[$i], $spCounts[$i]) -ForegroundColor Yellow
-}
+print("⚠  DISCREPANCIES FOUND:")
+for i in bad_days:
+    diff      = sp_counts[i] - pp_counts[i]
+    direction = f"SP EXTRA {diff}" if diff > 0 else f"PP EXTRA {abs(diff)}"
+    print(f"   {day_names[i]} ({week_dates[i].strftime('%m/%d')}): {direction}  [PP={pp_counts[i]} vs SP={sp_counts[i]}]")
 
-Write-Host ""
-$doAnalysis = Read-Host "Run deep analysis on discrepancy days? (y/n)"
-if ($doAnalysis -ne 'y') { Write-Host "Done."; exit }
+print()
+do_analysis = input("Run deep analysis on discrepancy days? (y/n): ").strip().lower()
+if do_analysis != 'y':
+    print("Done.")
+    exit()
 
 # ---- DEEP ANALYSIS PER BAD DAY ----
 
-foreach ($i in $badDays) {
-    $date    = $weekDates[$i]
-    $dayName = $dayNames[$i]
+for i in bad_days:
+    date     = week_dates[i]
+    day_name = day_names[i]
 
-    Write-Host ""
-    Write-Host ("=" * 60) -ForegroundColor Cyan
-    Write-Host ("  DEEP ANALYSIS — {0}  {1}" -f $dayName, $date.ToString('MM/dd/yyyy')) -ForegroundColor Cyan
-    Write-Host ("=" * 60) -ForegroundColor Cyan
+    print()
+    print("=" * 60)
+    print(f"  DEEP ANALYSIS — {day_name}  {date.strftime('%m/%d/%Y')}")
+    print("=" * 60)
 
-    $dayRows = @($allRows | Where-Object {
-        $ad = Parse-AnyDate $_.'Alert Date'
-        $ad -and $ad.Date -eq $date.Date
-    } | Sort-Object { Get-SessionNum $_.'Session ID' })
+    day_df = df[df['Alert Date'].dt.date == date.date()].copy()
+    day_df['_session_num'] = day_df['Session ID'].apply(get_session_num)
+    day_df = day_df.sort_values('_session_num')
 
-    Write-Host ("  SP records for this day: {0}" -f $dayRows.Count)
+    print(f"  SP records for this day: {len(day_df)}")
 
     # Next business day
-    $nextBiz = $date.AddDays(1)
-    while ($nextBiz.DayOfWeek -eq 'Saturday' -or $nextBiz.DayOfWeek -eq 'Sunday') {
-        $nextBiz = $nextBiz.AddDays(1)
-    }
+    next_biz = date + timedelta(days=1)
+    while next_biz.weekday() >= 5:
+        next_biz += timedelta(days=1)
 
     # ── CHECK 1: Session ID Sequence Anomaly ──────────────────
-    Write-Host ""
-    Write-Host "  [1] Session ID Sequence Check" -ForegroundColor Cyan
+    print()
+    print("  [1] Session ID Sequence Check")
 
-    if ($dayRows.Count -ge 2) {
-        $ids   = $dayRows | ForEach-Object { Get-SessionNum $_.'Session ID' }
-        $minId = ($ids | Measure-Object -Min).Minimum
-        $maxId = ($ids | Measure-Object -Max).Maximum
+    if len(day_df) >= 2:
+        min_id = day_df['_session_num'].min()
+        max_id = day_df['_session_num'].max()
 
-        $gapRows = @($allRows | Where-Object {
-            $n  = Get-SessionNum $_.'Session ID'
-            $ad = Parse-AnyDate $_.'Alert Date'
-            $n -gt $minId -and $n -lt $maxId -and $ad -and $ad.Date -ne $date.Date
-        })
+        gap_df = df[
+            (df['Session ID'].apply(get_session_num) > min_id) &
+            (df['Session ID'].apply(get_session_num) < max_id) &
+            (df['Alert Date'].dt.date != date.date())
+        ]
 
-        if ($gapRows.Count -gt 0) {
-            Write-Host ("  ⚠ {0} record(s) inside this day's Session ID range but have a DIFFERENT Alert Date:" -f $gapRows.Count) -ForegroundColor Yellow
-            foreach ($r in $gapRows) {
-                Write-Host ("    {0}  →  Alert Date: {1}" -f $r.'Session ID', $r.'Alert Date') -ForegroundColor Yellow
-            }
-        } else {
-            Write-Host "  ✓ No sequence anomalies" -ForegroundColor Green
-        }
-    } else {
-        Write-Host "  (Not enough records to check sequence)" -ForegroundColor DarkGray
-    }
+        if len(gap_df) > 0:
+            print(f"  ⚠ {len(gap_df)} record(s) inside this day's Session ID range but different Alert Date:")
+            for _, r in gap_df.iterrows():
+                print(f"    {r['Session ID']}  →  Alert Date: {r['Alert Date']}")
+        else:
+            print("  ✓ No sequence anomalies")
+    else:
+        print("  (Not enough records to check sequence)")
 
-    # ── CHECK 2: Impossible Timeline Violations ───────────────
-    Write-Host ""
-    Write-Host "  [2] Timeline Violations" -ForegroundColor Cyan
-    # NOTE: Alert Date → Action Date being next day is NORMAL (end of day alerts)
-    # Only flagging truly impossible or very long gaps
+    # ── CHECK 2: Timeline Violations ─────────────────────────
+    print()
+    print("  [2] Timeline Violations")
+    print("  (Note: Alert→Action being next day is NORMAL and not flagged)")
 
-    $tlIssues = @()
-    foreach ($r in $dayRows) {
-        $sid  = $r.'Session ID'
-        $ad   = Parse-AnyDate $r.'Alert Date'
-        $act  = Parse-AnyDate $r.'Action Date'
-        $comp = Parse-AnyDate $r.'AnalysisCompletionDate'
-        $prS  = Parse-AnyDate $r.'Peer_Review_Start'
-        $prE  = Parse-AnyDate $r.'Peer_Review_End'
+    tl_issues = []
+    for _, r in day_df.iterrows():
+        sid  = r['Session ID']
+        ad   = pd.to_datetime(r['Alert Date'],                        errors='coerce')
+        act  = pd.to_datetime(r.get('Action Date',              np.nan), errors='coerce')
+        comp = pd.to_datetime(r.get('AnalysisCompletionDate',   np.nan), errors='coerce')
+        pr_s = pd.to_datetime(r.get('Peer_Review_Start',        np.nan), errors='coerce')
+        pr_e = pd.to_datetime(r.get('Peer_Review_End',          np.nan), errors='coerce')
 
         # Impossible: Action before Alert
-        if ($act -and $ad -and $act.Date -lt $ad.Date) {
-            $tlIssues += "$sid : Action Date ($($r.'Action Date')) BEFORE Alert Date ($($r.'Alert Date'))  ← impossible"
-        }
-        # Impossible: Completion before Action
-        if ($comp -and $act -and $comp.Date -lt $act.Date) {
-            $tlIssues += "$sid : Completion ($($r.'AnalysisCompletionDate')) BEFORE Action Date ($($r.'Action Date'))  ← impossible"
-        }
-        # Impossible: Peer Review End before Start
-        if ($prE -and $prS -and $prE.Date -lt $prS.Date) {
-            $tlIssues += "$sid : Peer Review End ($($r.'Peer_Review_End')) BEFORE Start ($($r.'Peer_Review_Start'))  ← impossible"
-        }
-        # Unusually long: Alert to Completion > 5 business days
-        if ($comp -and $ad) {
-            $biz = Get-BizDayDiff $ad $comp
-            if ($biz -gt 5) {
-                $tlIssues += "$sid : Alert → Completion = $biz business days ($($r.'Alert Date') → $($r.'AnalysisCompletionDate'))  ← unusually long"
-            }
-        }
-    }
+        if pd.notna(act) and pd.notna(ad) and act.date() < ad.date():
+            tl_issues.append(f"{sid} : Action Date ({r.get('Action Date')}) BEFORE Alert Date ({r['Alert Date']}) ← impossible")
 
-    if ($tlIssues) {
-        Write-Host "  ⚠ Issues found:" -ForegroundColor Yellow
-        $tlIssues | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
-    } else {
-        Write-Host "  ✓ No timeline violations" -ForegroundColor Green
-    }
+        # Impossible: Completion before Action
+        if pd.notna(comp) and pd.notna(act) and comp.date() < act.date():
+            tl_issues.append(f"{sid} : Completion ({r.get('AnalysisCompletionDate')}) BEFORE Action Date ({r.get('Action Date')}) ← impossible")
+
+        # Impossible: Peer Review End before Start
+        if pd.notna(pr_e) and pd.notna(pr_s) and pr_e.date() < pr_s.date():
+            tl_issues.append(f"{sid} : Peer Review End ({r.get('Peer_Review_End')}) BEFORE Start ({r.get('Peer_Review_Start')}) ← impossible")
+
+        # Unusually long: >5 biz days
+        if pd.notna(comp) and pd.notna(ad):
+            biz = get_biz_day_diff(ad, comp)
+            if biz > 5:
+                tl_issues.append(f"{sid} : Alert→Completion = {biz} biz days ({r['Alert Date']} → {r.get('AnalysisCompletionDate')}) ← unusually long")
+
+    if tl_issues:
+        print("  ⚠ Issues found:")
+        for issue in tl_issues:
+            print(f"    {issue}")
+    else:
+        print("  ✓ No timeline violations")
 
     # ── CHECK 3: Empty / Suspicious Fields ───────────────────
-    Write-Host ""
-    Write-Host "  [3] Empty / Suspicious Fields" -ForegroundColor Cyan
+    print()
+    print("  [3] Empty / Suspicious Fields")
 
-    $critFields = 'Alert Rule','Status','ACF2ID','Analyst Name','Sign-off status'
-    $fldIssues  = @()
+    crit_fields = ['Alert Rule','Status','ACF2ID','Analyst Name','Sign-off status']
+    fld_issues  = []
 
-    foreach ($r in $dayRows) {
-        foreach ($f in $critFields) {
-            if (IsSuspicious $r.$f) {
-                $fldIssues += "$($r.'Session ID') : '$f' empty/suspicious  →  '$($r.$f)'"
-            }
-        }
-    }
+    for _, r in day_df.iterrows():
+        for f in crit_fields:
+            if f in df.columns and is_suspicious(r.get(f, np.nan)):
+                fld_issues.append(f"{r['Session ID']} : '{f}' empty/suspicious  →  '{r.get(f, '')}'")
 
-    if ($fldIssues) {
-        Write-Host "  ⚠ Issues found:" -ForegroundColor Yellow
-        $fldIssues | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
-    } else {
-        Write-Host "  ✓ All critical fields look populated" -ForegroundColor Green
-    }
+    if fld_issues:
+        print("  ⚠ Issues found:")
+        for issue in fld_issues:
+            print(f"    {issue}")
+    else:
+        print("  ✓ All critical fields look populated")
 
-    # ── CHECK 4: Next Business Day Bleed ─────────────────────
-    Write-Host ""
-    Write-Host ("  [4] Adjacent Day Bleed Check  ({0} ↔ {1})" -f $date.ToString('MM/dd'), $nextBiz.ToString('MM/dd')) -ForegroundColor Cyan
+    # ── CHECK 4: Adjacent Day Bleed ───────────────────────────
+    print()
+    print(f"  [4] Adjacent Day Bleed Check  ({date.strftime('%m/%d')} ↔ {next_biz.strftime('%m/%d')})")
 
-    $nextRows = @($allRows | Where-Object {
-        $ad = Parse-AnyDate $_.'Alert Date'
-        $ad -and $ad.Date -eq $nextBiz.Date
-    })
+    next_df = df[df['Alert Date'].dt.date == next_biz.date()].copy()
+    next_df['_session_num'] = next_df['Session ID'].apply(get_session_num)
 
-    if ($dayRows.Count -gt 0 -and $nextRows.Count -gt 0) {
-        $dayIds  = $dayRows  | ForEach-Object { Get-SessionNum $_.'Session ID' }
-        $nextIds = $nextRows | ForEach-Object { Get-SessionNum $_.'Session ID' }
-        $dayMax  = ($dayIds  | Measure-Object -Max).Maximum
-        $nxtMin  = ($nextIds | Measure-Object -Min).Minimum
+    if len(day_df) > 0 and len(next_df) > 0:
+        day_max = day_df['_session_num'].max()
+        nxt_min = next_df['_session_num'].min()
 
-        if ($nxtMin -le $dayMax) {
-            Write-Host "  ⚠ Session ID overlap — possible bleed between days:" -ForegroundColor Yellow
-            Write-Host ("    {0} max Session ID : {1}" -f $dayName, $dayMax) -ForegroundColor Yellow
-            Write-Host ("    {0} min Session ID : {1}" -f $nextBiz.ToString('MM/dd'), $nxtMin) -ForegroundColor Yellow
-        } else {
-            Write-Host "  ✓ Session IDs cleanly separated between days" -ForegroundColor Green
-        }
-    } else {
-        Write-Host "  (Not enough data on one or both days to compare)" -ForegroundColor DarkGray
-    }
+        if nxt_min <= day_max:
+            print(f"  ⚠ Session ID overlap — possible bleed between days:")
+            print(f"    {day_name} max Session ID : {day_max}")
+            print(f"    {next_biz.strftime('%m/%d')} min Session ID : {nxt_min}")
+        else:
+            print("  ✓ Session IDs cleanly separated between days")
+    else:
+        print("  (Not enough data on one or both days to compare)")
 
     # ── SUGGESTED ACTION ─────────────────────────────────────
-    Write-Host ""
-    Write-Host "  ► Suggested Action:" -ForegroundColor White
-    Write-Host ("    1. Filter SP by Alert Date = {0}" -f $date.ToString('MM/dd/yyyy')) -ForegroundColor White
-    Write-Host ("    2. Also check {0} for any bleed-over alerts" -f $nextBiz.ToString('MM/dd/yyyy')) -ForegroundColor White
-    Write-Host ("    3. Review flagged Session IDs above manually" ) -ForegroundColor White
-}
+    print()
+    print("  ► Suggested Action:")
+    print(f"    1. Filter SP by Alert Date = {date.strftime('%m/%d/%Y')}")
+    print(f"    2. Also check {next_biz.strftime('%m/%d/%Y')} for any bleed-over alerts")
+    print(f"    3. Review flagged Session IDs above manually")
 
-Write-Host ""
-Write-Host "Done."
+print()
+print("Done.")
