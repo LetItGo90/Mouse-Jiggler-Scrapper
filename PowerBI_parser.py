@@ -1,261 +1,372 @@
 import pandas as pd
-import numpy as np
-import os
 from datetime import datetime, timedelta
 
-# ==============================================================
-#   Proofpoint vs SharePoint Counter + Discrepancy Analyzer
-# ==============================================================
+# --- CONFIG ---
+CSV_PATH    = "alerts.csv"
+DATE_COL    = "Alert Date"
+DATE_FORMAT = "%m/%d/%Y %I:%M:%S %p"
 
-DEFAULT_CSV_PATH = "./alerts_export.csv"
+KNOWN_STATUSES = {"open", "closed", "in progress", "pending", "resolved", "escalated"}
 
-# ---- HELPERS ----
+# ----------------------------------------
 
-def get_week_dates():
-    today = datetime.today()
-    dow = today.weekday()  # Monday=0
-    monday = today - timedelta(days=dow)
-    return [monday + timedelta(days=i) for i in range(7)]
+def get_week_range():
+    today  = datetime.today()
+    monday = today - timedelta(days=today.weekday())
+    sunday = monday + timedelta(days=6)
 
-def get_biz_day_diff(from_date, to_date):
-    n = 0
-    cur = from_date.date() + timedelta(days=1)
-    while cur <= to_date.date():
+    print(f"\nCurrent week detected: "
+          f"{monday.strftime('%m/%d/%Y')} (Mon) — "
+          f"{sunday.strftime('%m/%d/%Y')} (Sun)")
+    choice = input("Use this week? (y/n): ").strip().lower()
+
+    if choice != 'y':
+        raw    = input("Enter Monday date (MM/DD/YYYY): ").strip()
+        monday = datetime.strptime(raw, "%m/%d/%Y")
+        sunday = monday + timedelta(days=6)
+
+    return monday, sunday
+
+
+def load_csv(path):
+    try:
+        df = pd.read_csv(path)
+        print(f"  Loaded {len(df)} total rows from CSV.")
+        return df
+    except FileNotFoundError:
+        print(f"ERROR: File not found → {path}")
+        exit()
+
+
+def get_biz_days(start, end):
+    n   = 0
+    cur = start.date() + timedelta(days=1)
+    while cur <= end.date():
         if cur.weekday() < 5:
             n += 1
         cur += timedelta(days=1)
     return n
 
+
+def safe_parse(series):
+    return pd.to_datetime(series, errors='coerce')
+
+
 def is_suspicious(val):
-    if pd.isna(val) or str(val).strip() == '':
+    if pd.isna(val):
         return True
-    t = str(val).strip().lower()
-    return t in ['_empty','n/a','none','null','unknown','-','na'] or len(t) <= 1
+    s = str(val).strip().lower()
+    return s in ['', '_empty', 'n/a', 'none', 'null', 'unknown', '-', 'na'] or len(s) <= 1
 
-def get_session_num(sid):
+
+def get_sid_num(sid):
     if pd.isna(sid):
-        return 0
-    num = ''.join(filter(str.isdigit, str(sid)))
-    return int(num) if num else 0
+        return None
+    digits = ''.join(filter(str.isdigit, str(sid)))
+    return int(digits) if digits else None
 
-# ---- LOAD CSV ----
 
-csv_path = DEFAULT_CSV_PATH
-if not os.path.exists(csv_path):
-    csv_path = input("CSV not found. Enter path to alerts_export.csv: ").strip()
-    if not os.path.exists(csv_path):
-        print("File not found. Exiting.")
-        exit()
+def deep_analysis(day_df, day_name, day_dt, full_df):
+    print(f"\n{'='*62}")
+    print(f"  DEEP ANALYSIS — {day_name}  {day_dt.strftime('%m/%d/%Y')}")
+    print(f"{'='*62}")
+    print(f"  Records on this day: {len(day_df)}")
 
-df = pd.read_csv(csv_path)
-df['Alert Date'] = pd.to_datetime(df['Alert Date'], errors='coerce')
+    day_df = day_df.copy()
 
-week_dates = get_week_dates()
-day_names  = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+    # Pre-parse all date columns
+    day_df['_alert_dt']  = safe_parse(day_df['Alert Date'])
+    day_df['_action_dt'] = safe_parse(day_df['Action Date'])            if 'Action Date'            in day_df.columns else pd.NaT
+    day_df['_comp_dt']   = safe_parse(day_df['AnalysisCompletionDate']) if 'AnalysisCompletionDate' in day_df.columns else pd.NaT
+    day_df['_pr_start']  = safe_parse(day_df['Peer_Review_Start'])      if 'Peer_Review_Start'      in day_df.columns else pd.NaT
+    day_df['_pr_end']    = safe_parse(day_df['Peer_Review_End'])        if 'Peer_Review_End'        in day_df.columns else pd.NaT
+    day_df['_sid_num']   = day_df['Session ID'].apply(get_sid_num)
 
-# ---- COUNT SP PER DAY ----
+    # ── LAYER 1: Sequential Anomaly ──────────────────────────
+    print(f"\n  [Layer 1] Sequential Anomaly")
+    print(f"  Logic: if SID 101 and 103 are both {day_dt.strftime('%m/%d/%Y')},")
+    print(f"         SID 102 should not say a different date.")
 
-sp_counts = {}
-for i, d in enumerate(week_dates):
-    sp_counts[i] = len(df[df['Alert Date'].dt.date == d.date()])
+    l1_issues = []
 
-total_sp = sum(sp_counts.values())
+    # Build a sorted view of the ENTIRE week by SID so we can check neighbours
+    fdf = full_df.copy()
+    fdf['_sid_num']   = fdf['Session ID'].apply(get_sid_num)
+    fdf['_alert_dt']  = safe_parse(fdf['Alert Date'])
+    fdf['_alert_date'] = fdf['_alert_dt'].dt.date
+    fdf = fdf.dropna(subset=['_sid_num']).sort_values('_sid_num').reset_index(drop=True)
 
-print()
-print("─" * 54)
-print(f"  SharePoint Total this week: {total_sp}")
-print("─" * 54)
+    for idx, row in fdf.iterrows():
+        this_date = row['_alert_date']
+        this_sid  = row['_sid_num']
+        this_id   = row['Session ID']
 
-# ---- ENTER PP COUNTS ----
+        # Get previous and next records in SID order
+        prev_row = fdf.iloc[idx - 1] if idx > 0               else None
+        next_row = fdf.iloc[idx + 1] if idx < len(fdf) - 1    else None
 
-yn = input("\nEnter Proofpoint counts per day? (y/n): ").strip().lower()
-if yn != 'y':
-    print("Done.")
-    exit()
+        prev_date = prev_row['_alert_date'] if prev_row is not None else None
+        next_date = next_row['_alert_date'] if next_row is not None else None
+        prev_id   = prev_row['Session ID']  if prev_row is not None else None
+        next_id   = next_row['Session ID']  if next_row is not None else None
 
-print()
-print("=" * 60)
-print(f"{'Day':<12}{'Date':<14}{'Proofpoint':<12}{'SharePoint':<12}Status")
-print("=" * 60)
+        # Both neighbours exist and agree on a date that differs from this record
+        if prev_date is not None and next_date is not None:
+            if prev_date == next_date and prev_date != this_date:
+                l1_issues.append(
+                    f"    ⚠ {this_id} says {this_date} BUT "
+                    f"neighbours {prev_id} and {next_id} both say {prev_date}\n"
+                    f"       → Likely mis-dated, should probably be {prev_date}"
+                )
 
-pp_counts = {}
-for i, d in enumerate(week_dates):
-    name = day_names[i]
-    raw  = input(f"  {name} ({d.strftime('%m/%d')}) - PP count (Enter to skip): ").strip()
+        # One neighbour agrees with the other side and this record is the odd one out
+        elif prev_date is not None and prev_date != this_date:
+            if next_date is None:
+                l1_issues.append(
+                    f"    ⚠ {this_id} says {this_date} but previous "
+                    f"{prev_id} says {prev_date} — possible bleed at end of day"
+                )
+        elif next_date is not None and next_date != this_date:
+            if prev_date is None:
+                l1_issues.append(
+                    f"    ⚠ {this_id} says {this_date} but next "
+                    f"{next_id} says {next_date} — possible bleed at start of day"
+                )
 
-    if not raw:
-        pp_counts[i] = None
-        continue
+    if l1_issues:
+        print(f"  ⚠ Sequence mismatches found:")
+        for s in l1_issues:
+            print(s)
+    else:
+        print("  ✓ All Session IDs are consistent with their Alert Dates")
 
-    pp = int(raw)
-    sp = sp_counts[i]
-    pp_counts[i] = pp
+    # ── LAYER 2: Bleed / Timing Gaps ─────────────────────────
+    print(f"\n  [Layer 2] Bleed / Timing Gaps")
+    l2_issues = []
 
-    diff = sp - pp
+    for _, r in day_df.iterrows():
+        sid = r['Session ID']
+
+        if pd.notna(r['_alert_dt']) and pd.notna(r['_action_dt']):
+            gap = get_biz_days(r['_alert_dt'], r['_action_dt'])
+            if gap > 1:
+                l2_issues.append(f"    {sid}: Alert→Action = {gap} biz days"
+                                 f"  ({r['Alert Date']} → {r.get('Action Date','')})")
+
+        if pd.notna(r['_action_dt']) and pd.notna(r['_comp_dt']):
+            gap = get_biz_days(r['_action_dt'], r['_comp_dt'])
+            if gap > 2:
+                l2_issues.append(f"    {sid}: Action→Completion = {gap} biz days"
+                                 f"  ({r.get('Action Date','')} → {r.get('AnalysisCompletionDate','')})")
+
+        if pd.notna(r['_comp_dt']) and pd.notna(r['_pr_start']):
+            gap = get_biz_days(r['_comp_dt'], r['_pr_start'])
+            if gap > 2:
+                l2_issues.append(f"    {sid}: Completion→Peer Review Start = {gap} biz days"
+                                 f"  ({r.get('AnalysisCompletionDate','')} → {r.get('Peer_Review_Start','')})")
+
+    if l2_issues:
+        print("  ⚠ Timing gaps detected:")
+        for s in l2_issues:
+            print(s)
+    else:
+        print("  ✓ No unusual timing gaps")
+
+    # ── LAYER 3: Timeline Logic Violations ───────────────────
+    print(f"\n  [Layer 3] Timeline Logic Violations")
+    l3_issues = []
+
+    for _, r in day_df.iterrows():
+        sid = r['Session ID']
+
+        if pd.notna(r['_action_dt']) and pd.notna(r['_alert_dt']):
+            if r['_action_dt'].date() < r['_alert_dt'].date():
+                l3_issues.append(
+                    f"    ✗ {sid}: Action Date ({r.get('Action Date','')}) is BEFORE "
+                    f"Alert Date ({r['Alert Date']}) — this is impossible, "
+                    f"you cannot act before the alert exists"
+                )
+
+        if pd.notna(r['_comp_dt']) and pd.notna(r['_action_dt']):
+            if r['_comp_dt'].date() < r['_action_dt'].date():
+                l3_issues.append(
+                    f"    ✗ {sid}: Completion ({r.get('AnalysisCompletionDate','')}) is BEFORE "
+                    f"Action Date ({r.get('Action Date','')}) — impossible"
+                )
+
+        if pd.notna(r['_pr_end']) and pd.notna(r['_pr_start']):
+            if r['_pr_end'].date() < r['_pr_start'].date():
+                l3_issues.append(
+                    f"    ✗ {sid}: Peer Review End ({r.get('Peer_Review_End','')}) is BEFORE "
+                    f"Start ({r.get('Peer_Review_Start','')}) — impossible"
+                )
+
+    if l3_issues:
+        print("  ⚠ Impossible timeline violations:")
+        for s in l3_issues:
+            print(s)
+    else:
+        print("  ✓ No timeline logic violations")
+
+    # ── LAYER 4: Empty / Suspicious Fields ───────────────────
+    print(f"\n  [Layer 4] Empty / Suspicious Fields")
+    CRIT_FIELDS = ['Alert Rule', 'ACF2ID', 'Analyst Name', 'Sign-off status', 'Status']
+    l4_issues   = []
+
+    for _, r in day_df.iterrows():
+        sid = r['Session ID']
+        for f in CRIT_FIELDS:
+            if f not in day_df.columns:
+                continue
+            val = r.get(f, '')
+            if is_suspicious(val):
+                l4_issues.append(f"    {sid}: '{f}' is empty/suspicious  →  '{val}'")
+            elif f == 'Status' and str(val).strip().lower() not in KNOWN_STATUSES:
+                l4_issues.append(f"    {sid}: 'Status' = '{val}'  ← not a recognised value")
+
+    if l4_issues:
+        print("  ⚠ Field issues found:")
+        for s in l4_issues:
+            print(s)
+    else:
+        print("  ✓ All critical fields look good")
+
+    print(f"\n  ► Suggested Action:")
+    print(f"    1. Filter SharePoint by Alert Date = {day_dt.strftime('%m/%d/%Y')}")
+    print(f"    2. Cross-reference flagged Session IDs above")
+    print(f"    3. Check adjacent days for any bleed-over entries")
+
+
+def main():
+    print("\n" + "=" * 50)
+    print("     ALERT RECONCILIATION TOOL")
+    print("=" * 50)
+
+    # --- Step 1: Week range ---
+    monday, sunday = get_week_range()
+    days      = [monday + timedelta(days=i) for i in range(7)]
+    day_names = ["Monday","Tuesday","Wednesday",
+                 "Thursday","Friday","Saturday","Sunday"]
+
+    # --- Step 2: PowerBI count ---
+    pb_total = int(input("\nHow many alerts does PowerBI show this week? ").strip())
+
+    # --- Step 3: Load + filter CSV ---
+    print(f"\nReading {CSV_PATH}...")
+    df = load_csv(CSV_PATH)
+
+    df[DATE_COL] = pd.to_datetime(df[DATE_COL], format=DATE_FORMAT, errors='coerce')
+    bad_dates    = df[DATE_COL].isna().sum()
+    if bad_dates:
+        print(f"  ⚠ Warning: {bad_dates} row(s) had unreadable dates and were skipped.")
+
+    df = df.dropna(subset=[DATE_COL])
+
+    monday_ts = pd.Timestamp(monday)
+    sunday_ts = pd.Timestamp(sunday) + pd.Timedelta(hours=23, minutes=59, seconds=59)
+
+    week_df  = df[(df[DATE_COL] >= monday_ts) & (df[DATE_COL] <= sunday_ts)]
+    sp_total = len(week_df)
+
+    # --- Step 4: Summary ---
+    print("\n" + "=" * 50)
+    print(f"  WEEK: {monday.strftime('%m/%d')} – {sunday.strftime('%m/%d/%Y')}")
+    print("=" * 50)
+    print(f"  PowerBI Total    : {pb_total}")
+    print(f"  SharePoint Total : {sp_total}")
+
+    diff = pb_total - sp_total
     if diff == 0:
-        status = "✓"
+        print("  ✓ Totals MATCH")
     elif diff > 0:
-        status = f"X  SP +{diff}"
+        print(f"  ✗ SharePoint is MISSING {diff} alert(s)")
     else:
-        status = f"X  PP +{abs(diff)}"
+        print(f"  ✗ SharePoint has {abs(diff)} EXTRA alert(s) — possible duplicates or wrong date")
 
-    print(f"  {name:<12}{d.strftime('%m/%d/%Y'):<14}{pp:<12}{sp:<12}{status}")
+    # --- Step 5: Per-day SharePoint counts ---
+    print("\n" + "-" * 46)
+    print(f"  {'Day':<12} {'Date':<13} {'SharePoint':>10}")
+    print("-" * 46)
 
-total_pp = sum(v for v in pp_counts.values() if v is not None)
-print("─" * 60)
-print(f"{'TOTAL':<26}{total_pp:<12}{total_sp}")
-print()
+    sp_by_day = {}
+    for day, name in zip(days, day_names):
+        count           = (week_df[DATE_COL].dt.date == day.date()).sum()
+        sp_by_day[name] = count
+        print(f"  {name:<12} {day.strftime('%m/%d/%Y'):<13} {count:>10}")
 
-# ---- FIND DISCREPANCIES ----
+    print("-" * 46)
+    print(f"  {'TOTAL':<25} {sp_total:>10}\n")
 
-bad_days = [i for i in range(7) if pp_counts.get(i) is not None and pp_counts[i] != sp_counts[i]]
+    # --- Step 6: Optional Proofpoint input ---
+    go = input("Enter Proofpoint counts per day to compare? (y/n): ").strip().lower()
+    if go != 'y':
+        print("\nDone. Run again anytime.")
+        return
 
-if not bad_days:
-    print("✓ All counts match!")
-    print("Done.")
-    exit()
+    print("\n" + "=" * 62)
+    print(f"  {'Day':<12} {'Date':<13} {'Proofpoint':>10} "
+          f"{'SharePoint':>11} {'Status':>12}")
+    print("=" * 62)
 
-print("⚠  DISCREPANCIES FOUND:")
-for i in bad_days:
-    diff      = sp_counts[i] - pp_counts[i]
-    direction = f"SP EXTRA {diff}" if diff > 0 else f"PP EXTRA {abs(diff)}"
-    print(f"   {day_names[i]} ({week_dates[i].strftime('%m/%d')}): {direction}  [PP={pp_counts[i]} vs SP={sp_counts[i]}]")
+    issues   = []
+    pp_total = 0
 
-print()
-do_analysis = input("Run deep analysis on discrepancy days? (y/n): ").strip().lower()
-if do_analysis != 'y':
-    print("Done.")
-    exit()
+    for day, name in zip(days, day_names):
+        raw = input(f"  {name} ({day.strftime('%m/%d')}) — "
+                    f"Proofpoint count (Enter to skip): ").strip()
 
-# ---- DEEP ANALYSIS PER BAD DAY ----
+        if raw == '':
+            print(f"    → Skipped")
+            continue
 
-for i in bad_days:
-    date     = week_dates[i]
-    day_name = day_names[i]
+        pp        = int(raw)
+        sp        = sp_by_day[name]
+        pp_total += pp
+        day_diff  = pp - sp
 
-    print()
-    print("=" * 60)
-    print(f"  DEEP ANALYSIS — {day_name}  {date.strftime('%m/%d/%Y')}")
-    print("=" * 60)
-
-    day_df = df[df['Alert Date'].dt.date == date.date()].copy()
-    day_df['_session_num'] = day_df['Session ID'].apply(get_session_num)
-    day_df = day_df.sort_values('_session_num')
-
-    print(f"  SP records for this day: {len(day_df)}")
-
-    # Next business day
-    next_biz = date + timedelta(days=1)
-    while next_biz.weekday() >= 5:
-        next_biz += timedelta(days=1)
-
-    # ── CHECK 1: Session ID Sequence Anomaly ──────────────────
-    print()
-    print("  [1] Session ID Sequence Check")
-
-    if len(day_df) >= 2:
-        min_id = day_df['_session_num'].min()
-        max_id = day_df['_session_num'].max()
-
-        gap_df = df[
-            (df['Session ID'].apply(get_session_num) > min_id) &
-            (df['Session ID'].apply(get_session_num) < max_id) &
-            (df['Alert Date'].dt.date != date.date())
-        ]
-
-        if len(gap_df) > 0:
-            print(f"  ⚠ {len(gap_df)} record(s) inside this day's Session ID range but different Alert Date:")
-            for _, r in gap_df.iterrows():
-                print(f"    {r['Session ID']}  →  Alert Date: {r['Alert Date']}")
+        if day_diff == 0:
+            status = "✓ Match"
+        elif day_diff > 0:
+            status = f"✗ SP -{day_diff}"
         else:
-            print("  ✓ No sequence anomalies")
+            status = f"✗ SP +{abs(day_diff)}"
+
+        print(f"  {name:<12} {day.strftime('%m/%d/%Y'):<13} {pp:>10} {sp:>11} {status:>12}")
+
+        if day_diff != 0:
+            issues.append((name, day, pp, sp, day_diff))
+
+    print("-" * 62)
+    print(f"  {'TOTAL':<25} {pp_total:>10} {sp_total:>11}\n")
+
+    # --- Step 7: Issue summary ---
+    if not issues:
+        print("✓ All days match. No discrepancies found.")
     else:
-        print("  (Not enough records to check sequence)")
+        print("⚠  DISCREPANCIES FOUND:")
+        print("-" * 62)
+        for name, day, pp, sp, d in issues:
+            date_str = day.strftime('%m/%d')
+            if d > 0:
+                print(f"  {name} ({date_str}): SharePoint MISSING {d} alert(s) "
+                      f"[PP={pp} vs SP={sp}]")
+                print(f"    → Check: wrong date entered, alert not logged, "
+                      f"or logged to different week")
+            else:
+                print(f"  {name} ({date_str}): SharePoint has {abs(d)} EXTRA alert(s) "
+                      f"[PP={pp} vs SP={sp}]")
+                print(f"    → Check: duplicate entry or wrong date used")
 
-    # ── CHECK 2: Timeline Violations ─────────────────────────
-    print()
-    print("  [2] Timeline Violations")
-    print("  (Note: Alert→Action being next day is NORMAL and not flagged)")
+        # --- Step 8: Deep analysis ---
+        print()
+        go_deep = input("Run deep analysis on discrepancy days? (y/n): ").strip().lower()
+        if go_deep == 'y':
+            for name, day, pp, sp, d in issues:
+                day_df = week_df[week_df[DATE_COL].dt.date == day.date()].copy()
+                deep_analysis(day_df, name, day, df)
 
-    tl_issues = []
-    for _, r in day_df.iterrows():
-        sid  = r['Session ID']
-        ad   = pd.to_datetime(r['Alert Date'],                        errors='coerce')
-        act  = pd.to_datetime(r.get('Action Date',              np.nan), errors='coerce')
-        comp = pd.to_datetime(r.get('AnalysisCompletionDate',   np.nan), errors='coerce')
-        pr_s = pd.to_datetime(r.get('Peer_Review_Start',        np.nan), errors='coerce')
-        pr_e = pd.to_datetime(r.get('Peer_Review_End',          np.nan), errors='coerce')
+    print("\nDone.")
 
-        # Impossible: Action before Alert
-        if pd.notna(act) and pd.notna(ad) and act.date() < ad.date():
-            tl_issues.append(f"{sid} : Action Date ({r.get('Action Date')}) BEFORE Alert Date ({r['Alert Date']}) ← impossible")
 
-        # Impossible: Completion before Action
-        if pd.notna(comp) and pd.notna(act) and comp.date() < act.date():
-            tl_issues.append(f"{sid} : Completion ({r.get('AnalysisCompletionDate')}) BEFORE Action Date ({r.get('Action Date')}) ← impossible")
-
-        # Impossible: Peer Review End before Start
-        if pd.notna(pr_e) and pd.notna(pr_s) and pr_e.date() < pr_s.date():
-            tl_issues.append(f"{sid} : Peer Review End ({r.get('Peer_Review_End')}) BEFORE Start ({r.get('Peer_Review_Start')}) ← impossible")
-
-        # Unusually long: >5 biz days
-        if pd.notna(comp) and pd.notna(ad):
-            biz = get_biz_day_diff(ad, comp)
-            if biz > 5:
-                tl_issues.append(f"{sid} : Alert→Completion = {biz} biz days ({r['Alert Date']} → {r.get('AnalysisCompletionDate')}) ← unusually long")
-
-    if tl_issues:
-        print("  ⚠ Issues found:")
-        for issue in tl_issues:
-            print(f"    {issue}")
-    else:
-        print("  ✓ No timeline violations")
-
-    # ── CHECK 3: Empty / Suspicious Fields ───────────────────
-    print()
-    print("  [3] Empty / Suspicious Fields")
-
-    crit_fields = ['Alert Rule','Status','ACF2ID','Analyst Name','Sign-off status']
-    fld_issues  = []
-
-    for _, r in day_df.iterrows():
-        for f in crit_fields:
-            if f in df.columns and is_suspicious(r.get(f, np.nan)):
-                fld_issues.append(f"{r['Session ID']} : '{f}' empty/suspicious  →  '{r.get(f, '')}'")
-
-    if fld_issues:
-        print("  ⚠ Issues found:")
-        for issue in fld_issues:
-            print(f"    {issue}")
-    else:
-        print("  ✓ All critical fields look populated")
-
-    # ── CHECK 4: Adjacent Day Bleed ───────────────────────────
-    print()
-    print(f"  [4] Adjacent Day Bleed Check  ({date.strftime('%m/%d')} ↔ {next_biz.strftime('%m/%d')})")
-
-    next_df = df[df['Alert Date'].dt.date == next_biz.date()].copy()
-    next_df['_session_num'] = next_df['Session ID'].apply(get_session_num)
-
-    if len(day_df) > 0 and len(next_df) > 0:
-        day_max = day_df['_session_num'].max()
-        nxt_min = next_df['_session_num'].min()
-
-        if nxt_min <= day_max:
-            print(f"  ⚠ Session ID overlap — possible bleed between days:")
-            print(f"    {day_name} max Session ID : {day_max}")
-            print(f"    {next_biz.strftime('%m/%d')} min Session ID : {nxt_min}")
-        else:
-            print("  ✓ Session IDs cleanly separated between days")
-    else:
-        print("  (Not enough data on one or both days to compare)")
-
-    # ── SUGGESTED ACTION ─────────────────────────────────────
-    print()
-    print("  ► Suggested Action:")
-    print(f"    1. Filter SP by Alert Date = {date.strftime('%m/%d/%Y')}")
-    print(f"    2. Also check {next_biz.strftime('%m/%d/%Y')} for any bleed-over alerts")
-    print(f"    3. Review flagged Session IDs above manually")
-
-print()
-print("Done.")
+if __name__ == "__main__":
+    main()
