@@ -20,7 +20,7 @@ COL_ACF2ID = "ACF2ID"
 COL_ANALYSIS_COMP = "AnalysisCompletionDate"
 COL_ALLEGATION = "Original_Allegation"
 
-# Valid statuses — add more if needed
+# Valid statuses
 VALID_STATUSES = ["non-issue", "issue"]
 
 DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
@@ -152,7 +152,7 @@ def check_status(df):
 
 
 def check_dates(df, week_start=None):
-    """Check alert dates make sense and fall in expected week."""
+    """Check alert dates and work dates for issues."""
     print("\n[4] DATE CHECKS")
     issues = []
     if COL_ALERT_DATE not in df.columns:
@@ -160,6 +160,8 @@ def check_dates(df, week_start=None):
         return issues
 
     dates = parse_date_col(df[COL_ALERT_DATE])
+
+    # --- Unparseable dates ---
     bad_dates = dates.isna() & df[COL_ALERT_DATE].notna() & (df[COL_ALERT_DATE].str.strip() != "")
     if bad_dates.sum() > 0:
         print(f"  ⚠️  {bad_dates.sum()} rows have unparseable alert dates")
@@ -173,13 +175,17 @@ def check_dates(df, week_start=None):
                 "Detail": f"Cannot parse '{df.at[idx, COL_ALERT_DATE]}'"
             })
 
+    # --- Alert dates outside expected range ---
+    # Alerts generate on weekends too, so valid range is Sat before Monday through Friday
     if week_start:
         ws = pd.Timestamp(week_start)
-        we = ws + pd.Timedelta(days=4, hours=23, minutes=59, seconds=59)
-        outside = dates.notna() & ((dates < ws) | (dates > we))
+        range_start = ws - pd.Timedelta(days=2)  # Saturday before
+        range_end = ws + pd.Timedelta(days=4, hours=23, minutes=59, seconds=59)  # Friday
+        outside = dates.notna() & ((dates < range_start) | (dates > range_end))
         count = outside.sum()
         if count > 0:
-            print(f"  ⚠️  {count} alert(s) fall outside the week ({ws.strftime('%m/%d')} - {we.strftime('%m/%d')}):")
+            print(f"  ⚠️  {count} alert(s) fall outside the expected range "
+                  f"({range_start.strftime('%m/%d')} Sat - {range_end.strftime('%m/%d')} Fri):")
             for idx in df.index[outside][:10]:
                 sid = df.at[idx, COL_SESSION_ID] if COL_SESSION_ID in df.columns else "?"
                 print(f"     • Row {idx}, Session {sid}: {dates[idx]}")
@@ -188,12 +194,42 @@ def check_dates(df, week_start=None):
                     "Field": "Alert Date",
                     "Row": idx,
                     "Session ID": sid,
-                    "Detail": f"Date {dates[idx]} outside week range"
+                    "Detail": f"Date {dates[idx]} outside expected range"
                 })
         else:
-            print(f"  ✅ All alerts fall within the week ({ws.strftime('%m/%d')} - {we.strftime('%m/%d')})")
+            print(f"  ✅ All alerts fall within expected range "
+                  f"({range_start.strftime('%m/%d')} Sat - {range_end.strftime('%m/%d')} Fri)")
 
-    # Check Action Date >= Alert Date
+    # --- Work dates should NOT fall on weekends ---
+    # Alerts generate on weekends but nobody works them on weekends.
+    # Action Date / Analysis Completion Date on Sat/Sun = data entry error.
+    work_date_cols = {
+        COL_ACTION_DATE: "Action Date",
+        COL_ANALYSIS_COMP: "Analysis Completion Date",
+    }
+    for col, label in work_date_cols.items():
+        if col not in df.columns:
+            continue
+        work_dates = parse_date_col(df[col])
+        weekend_mask = work_dates.notna() & work_dates.dt.dayofweek.isin([5, 6])
+        wcount = weekend_mask.sum()
+        if wcount > 0:
+            print(f"  ⚠️  {wcount} row(s) have {label} on a WEEKEND (data entry error):")
+            for idx in df.index[weekend_mask][:10]:
+                sid = df.at[idx, COL_SESSION_ID] if COL_SESSION_ID in df.columns else "?"
+                day_name = work_dates[idx].strftime('%A %m/%d/%Y')
+                print(f"     • Row {idx}, Session {sid}: {label} = {day_name}")
+                issues.append({
+                    "Check": "Weekend Work Date",
+                    "Field": label,
+                    "Row": idx,
+                    "Session ID": sid,
+                    "Detail": f"{label} is {day_name} — weekend entry error"
+                })
+        else:
+            print(f"  ✅ No {label} entries on weekends")
+
+    # --- Action Date should be >= Alert Date ---
     if COL_ACTION_DATE in df.columns:
         action_dates = parse_date_col(df[COL_ACTION_DATE])
         backwards = dates.notna() & action_dates.notna() & (action_dates < dates)
@@ -208,12 +244,15 @@ def check_dates(df, week_start=None):
                     "Session ID": sid,
                     "Detail": f"Action {action_dates[idx]} before Alert {dates[idx]}"
                 })
+        else:
+            print(f"  ✅ All Action Dates are on or after Alert Dates")
 
     return issues
 
 
 def get_sp_daily_counts(df):
-    """Get daily alert counts from SharePoint data."""
+    """Get daily alert counts from SharePoint data.
+    Weekend alerts (Sat/Sun) roll into Monday since that's when they're worked."""
     if COL_ALERT_DATE not in df.columns:
         return {}
     dates = parse_date_col(df[COL_ALERT_DATE])
@@ -221,6 +260,10 @@ def get_sp_daily_counts(df):
     counts = {}
     for d in DAY_ORDER:
         counts[d] = (days == d).sum()
+    # Roll weekend into Monday
+    sat_count = (days == "Saturday").sum()
+    sun_count = (days == "Sunday").sum()
+    counts["Monday"] = counts.get("Monday", 0) + sat_count + sun_count
     return counts
 
 
@@ -264,7 +307,7 @@ def compare_counts(sp_daily, sp_total, oi_daily, oi_total):
             "Detail": f"SP={sp_total} vs OI={oi_total}, diff={diff}"
         })
 
-    # Daily
+    # Daily breakdown — for troubleshooting where the gap is
     print(f"\n  {'Day':<12} {'SharePoint':>12} {'ObserveIT':>12} {'Diff':>8}  Status")
     print(f"  {'-'*12} {'-'*12} {'-'*12} {'-'*8}  {'-'*10}")
 
@@ -273,7 +316,8 @@ def compare_counts(sp_daily, sp_total, oi_daily, oi_total):
         oi_val = oi_daily.get(day, 0)
         d = sp_val - oi_val
         status = "✅" if d == 0 else "⚠️  MISMATCH"
-        print(f"  {day:<12} {sp_val:>12} {oi_val:>12} {d:>+8}  {status}")
+        label = f"{day}*" if day == "Monday" else day
+        print(f"  {label:<12} {sp_val:>12} {oi_val:>12} {d:>+8}  {status}")
         if d != 0:
             direction = "more in SP" if d > 0 else "more in OI"
             issues.append({
@@ -283,6 +327,8 @@ def compare_counts(sp_daily, sp_total, oi_daily, oi_total):
                 "Session ID": "",
                 "Detail": f"SP={sp_val} OI={oi_val} ({abs(d)} {direction})"
             })
+
+    print(f"\n  * Monday includes weekend alerts (Sat/Sun)")
 
     return issues
 
@@ -300,7 +346,7 @@ def main():
 
     # --- Optional week start ---
     week_start = None
-    ws_input = input("Week start date (YYYY-MM-DD) or press Enter to skip: ").strip()
+    ws_input = input("Week start date (Monday, YYYY-MM-DD) or press Enter to skip: ").strip()
     if ws_input:
         week_start = ws_input
 
@@ -317,12 +363,12 @@ def main():
     sp_daily = get_sp_daily_counts(df)
     sp_total = len(df)
 
-    print(f"\n  SharePoint daily counts (from Alert Date):")
+    print(f"\n  SharePoint daily counts (weekend alerts rolled into Monday):")
     for day in DAY_ORDER:
         print(f"     {day}: {sp_daily.get(day, 0)}")
-    sp_daily_sum = sum(sp_daily.values())
-    if sp_daily_sum != sp_total:
-        print(f"  ⚠️  Daily sum ({sp_daily_sum}) != total rows ({sp_total}) — weekend/unparsed dates?")
+    daily_sum = sum(sp_daily.get(d, 0) for d in DAY_ORDER)
+    if daily_sum != sp_total:
+        print(f"  ⚠️  Daily sum = {daily_sum} but total rows = {sp_total} — check for unparsed dates")
 
     # --- ObserveIT comparison ---
     do_compare = input("\nCompare with ObserveIT? (y/n): ").strip().lower()
