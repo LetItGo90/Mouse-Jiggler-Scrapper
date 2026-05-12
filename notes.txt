@@ -1,0 +1,1 @@
+concat(if(empty(items('Apply_to_each')?['Status']),'No Status, ',''),if(empty(items('Apply_to_each')?['ACF2ID']),'No ACF2ID, ',''),if(empty(items('Apply_to_each')?['SessionID']),'No Session ID, ',''))
