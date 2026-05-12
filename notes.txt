@@ -8,6 +8,6 @@ Missing fields: [BlankFields]
 
 concat(
   if(equals(items('Apply_to_each')?['SessionID'], null), 'Session ID, ', ''),
-  if(empty(items('Apply_to_each')?['ACF2ID']), 'ACF2 ID, ', ''),
+  if(equals(items('Apply_to_each')?['ACF2ID'], null), 'ACF2 ID, ', ''),
   if(empty(items('Apply_to_each')?['Status']?['Value']), 'Status, ', '')
 )
