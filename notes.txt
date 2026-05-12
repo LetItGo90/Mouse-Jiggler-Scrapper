@@ -8,6 +8,12 @@ Missing fields: [BlankFields]
 
 concat(
   if(equals(items('Apply_to_each')?['SessionID'], null), 'Session ID, ', ''),
-  if(equals(items('Apply_to_each')?['ACF2ID'], null), 'ACF2 ID, ', ''),
-  if(empty(items('Apply_to_each')?['Status']?['Value']), 'Status, ', '')
+  if(empty(items('Apply_to_each')?['ACF2ID']), 'ACF2 ID, ', ''),
+  if(empty(items('Apply_to_each')?['Status']?['Value']), 'Status, ', ''),
+  if(equals(items('Apply_to_each')?['AlertDate'], null), 'AlertDate, ', ''),
+  if(empty(items('Apply_to_each')?['Severity']?['Value']), 'Severity, ', ''),
+  if(empty(items('Apply_to_each')?['AlertRule']), 'AlertRule, ', ''),
+  if(equals(items('Apply_to_each')?['ActionDate'], null), 'ActionDate, ', ''),
+  if(equals(items('Apply_to_each')?['AnalysisCompletionDate'], null), 'AnalysisCompletionDate, ', ''),
+  if(empty(items('Apply_to_each')?['Comments']), 'Comments, ', '')
 )
