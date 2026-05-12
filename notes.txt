@@ -1,1 +1,3 @@
 concat(if(empty(items('Apply_to_each')?['Status']),'No Status, ',''),if(empty(items('Apply_to_each')?['ACF2ID']),'No ACF2ID, ',''),if(empty(items('Apply_to_each')?['SessionID']),'No Session ID, ',''))
+
+Created ge '@{formatDateTime(addDays(utcNow(),-1),'yyyy-MM-dd')}T00:00:00Z' and Created lt '@{formatDateTime(utcNow(),'yyyy-MM-dd')}T00:00:00Z'
