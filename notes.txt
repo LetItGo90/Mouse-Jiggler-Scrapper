@@ -19,3 +19,30 @@ concat(
 )
 
 if(equals(items('Apply_to_each')?['SessionID'], null), 'MISSING', string(items('Apply_to_each')?['SessionID']))
+
+AND(
+  not(empty(items('Apply_to_each')?['AlertDate'])),
+  not(empty(items('Apply_to_each')?['ActionDate'])),
+  not(empty(items('Apply_to_each')?['AnalysisCompletionDate']))
+)
+
+greater(
+  ticks(items('Apply_to_each')?['AlertDate']),
+  ticks(items('Apply_to_each')?['ActionDate'])
+)
+
+greater(
+  ticks(items('Apply_to_each')?['ActionDate']),
+  ticks(items('Apply_to_each')?['AnalysisCompletionDate'])
+)
+
+greater(
+  ticks(items('Apply_to_each')?['AlertDate']),
+  ticks(items('Apply_to_each')?['AnalysisCompletionDate'])
+)
+
+
+OR(
+  not(empty(variables('BlankFields'))),
+  not(empty(variables('TimeIssues')))
+)
