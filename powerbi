@@ -1,0 +1,6 @@
+Alerts Last 90 Days = 
+CALCULATE(
+    COUNTROWS('Proof Point Alerts'),
+    REMOVEFILTERS('Proof Point Alerts'[AlertDate]),
+    'Proof Point Alerts'[AlertDate] >= TODAY() - 90
+)
