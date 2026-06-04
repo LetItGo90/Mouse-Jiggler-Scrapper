@@ -13,10 +13,10 @@ PDF_FILE = f"Weekly_Report_{REPORT_DATE}.pdf"
 
 # Adjust these column names if your CSV uses different headers
 COL_STATUS    = "Status"
-COL_ANALYST   = "Analyst"
-COL_ALERTTYPE = "AlertType"     # or "Rule" / "AlertName"
+COL_ANALYST   = "Analyst Name"
+COL_ALERTTYPE = "Alert Rule"
 COL_SEVERITY  = "Severity"
-COL_DATE      = "CreatedDate"   # date alert was generated
+COL_DATE      = "Alert Date"
 
 COMPLETED_STATUSES = ["Non-Issue", "Issue"]
 OPEN_STATUSES      = ["Reviewing"]
