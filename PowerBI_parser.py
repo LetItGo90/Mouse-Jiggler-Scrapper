@@ -1,169 +1,131 @@
+# power.py — IES 90-Day Operational Report (Proofpoint)
 import os
+from datetime import datetime, timedelta
 import pandas as pd
 import matplotlib.pyplot as plt
-from fpdf import FPDF
-from datetime import datetime, timedelta
+from docx import Document
+from docx.shared import Inches, Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 # ---------- CONFIG ----------
-CSV_FILE = "alerts.csv"
-CHART_DIR = "charts"
-TODAY = datetime.today()
-REPORT_DATE = TODAY.strftime("%Y-%m-%d")
-PDF_FILE = f"Weekly_Report_{REPORT_DATE}.pdf"
+CSV_PATH   = "alerts.csv"      # <-- your CSV filename
+LOGO_PATH  = "td.png"
+CHART_DIR  = "charts"
+LOOKBACK   = 90
 
-# Adjust these column names if your CSV uses different headers
-COL_STATUS    = "Status"
-COL_ANALYST   = "Analyst Name"
-COL_ALERTTYPE = "Alert Rule"
-COL_SEVERITY  = "Severity"
-COL_DATE      = "Alert Date"
+# EXACT columns from your file
+COL_DATE     = "Alert Date"
+COL_CREATED  = "Created"
+COL_STATUS   = "Status"
+COL_RULE     = "Alert Rule"
+COL_SEVERITY = "Severity"
+COL_ANALYST  = "Analyst Name"
+COL_SIGNOFF  = "Sign-off status"
 
-COMPLETED_STATUSES = ["Non-Issue", "Issue"]
-OPEN_STATUSES      = ["Reviewing"]
-
+end   = datetime.now().date()
+start = end - timedelta(days=LOOKBACK)
+window_label = f"{start:%m/%d/%Y} – {end:%m/%d/%Y}"
+OUTPUT_DOCX  = f"IES_90DayReport_{end:%Y-%m-%d}.docx"
 os.makedirs(CHART_DIR, exist_ok=True)
 
 # ---------- LOAD ----------
-df = pd.read_csv(CSV_FILE)
+df = pd.read_csv(CSV_PATH)
 df[COL_DATE] = pd.to_datetime(df[COL_DATE], errors="coerce")
+df = df.dropna(subset=[COL_DATE])
+df = df[(df[COL_DATE].dt.date >= start) & (df[COL_DATE].dt.date <= end)]
 
-cutoff_90 = TODAY - timedelta(days=90)
-cutoff_7  = TODAY - timedelta(days=7)
+# ---------- METRICS ----------
+alerts_received = len(df)
+alerts_pending  = df[COL_STATUS].astype(str).str.lower().eq("pending").sum()
+avg_per_day     = round(alerts_received / LOOKBACK, 1)
 
-df_90 = df[df[COL_DATE] >= cutoff_90].copy()
-df_7  = df[df[COL_DATE] >= cutoff_7].copy()
+status_counts   = df[df[COL_STATUS].isin(["Non-Issue", "Issue"])][COL_STATUS].value_counts()
+severity_counts = df[COL_SEVERITY].value_counts()
 
-# ---------- CHART 1: Weekly volume trend (90d) ----------
-weekly = df_90.groupby(pd.Grouper(key=COL_DATE, freq="W")).size()
-plt.figure(figsize=(10, 4))
-plt.plot(weekly.index, weekly.values, marker="o", color="#2E7D32", linewidth=2)
-plt.title("Alert Volume Trend - Last 90 Days (Weekly)")
-plt.xlabel("Week Ending"); plt.ylabel("Alert Count")
-plt.grid(True, alpha=0.3); plt.tight_layout()
-plt.savefig(f"{CHART_DIR}/trend_volume.png", dpi=120); plt.close()
+rule_counts = df[COL_RULE].value_counts()
+top5  = rule_counts.head(5)
+other = rule_counts.iloc[5:].sum()
+rules_plot = pd.concat([top5, pd.Series({"Others": other})]) if other else top5
 
-# ---------- CHART 2: Trend by alert type (90d) ----------
-if COL_ALERTTYPE in df_90.columns:
-    by_type = (df_90.groupby([pd.Grouper(key=COL_DATE, freq="W"), COL_ALERTTYPE])
-                    .size().unstack(fill_value=0))
-    by_type.plot(figsize=(10, 5), marker="o")
-    plt.title("Alert Type Trend - Last 90 Days")
-    plt.xlabel("Week Ending"); plt.ylabel("Count")
-    plt.legend(loc="upper left", fontsize=7, ncol=2)
-    plt.grid(True, alpha=0.3); plt.tight_layout()
-    plt.savefig(f"{CHART_DIR}/trend_by_type.png", dpi=120); plt.close()
+analyst_counts = (df[df[COL_STATUS].isin(["Non-Issue", "Issue"])]
+                  [COL_ANALYST].value_counts())
 
-# ---------- CHART 3: Severity breakdown (last 7d) ----------
-if COL_SEVERITY in df_7.columns:
-    sev = df_7[COL_SEVERITY].value_counts()
-    plt.figure(figsize=(6, 4))
-    sev.plot(kind="bar", color="#2E7D32", edgecolor="black")
-    plt.title("Alerts by Severity - Last 7 Days")
-    plt.ylabel("Count"); plt.xticks(rotation=0)
-    plt.tight_layout()
-    plt.savefig(f"{CHART_DIR}/severity.png", dpi=120); plt.close()
+# ---------- CHARTS ----------
+TD_GREEN = "#00B140"
+plt.rcParams.update({"font.family": "Calibri", "font.size": 11})
 
-# ---------- CHART 4: Analyst completions (90d) ----------
-# Counts alerts where status is Non-Issue or Issue (i.e. dispositioned)
-completed_90 = df_90[df_90[COL_STATUS].isin(COMPLETED_STATUSES)]
-analyst_counts = completed_90[COL_ANALYST].value_counts()
-plt.figure(figsize=(10, 5))
-analyst_counts.plot(kind="bar", color="#2E7D32", edgecolor="black")
-plt.title("Alerts Completed by Analyst - Last 90 Days")
-plt.xlabel("Analyst"); plt.ylabel("Completed Alerts (Issue + Non-Issue)")
-plt.xticks(rotation=30, ha="right")
-plt.tight_layout()
-plt.savefig(f"{CHART_DIR}/analyst.png", dpi=120); plt.close()
+def save_bar(series, fname, ylabel, xlabel):
+    if series.empty: return
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    bars = ax.bar(series.index.astype(str), series.values, color=TD_GREEN)
+    ax.bar_label(bars, padding=3)
+    ax.set_ylabel(ylabel); ax.set_xlabel(xlabel)
+    ax.spines[["top","right"]].set_visible(False)
+    plt.xticks(rotation=15, ha="right")
+    plt.tight_layout(); plt.savefig(f"{CHART_DIR}/{fname}", dpi=160); plt.close()
 
-# ---------- CHART 5: Open alerts aging (Reviewing) ----------
-open_alerts = df[df[COL_STATUS].isin(OPEN_STATUSES)].copy()
-open_alerts["AgeDays"] = (TODAY - open_alerts[COL_DATE]).dt.days
-bins   = [0, 7, 14, 30, 60, 9999]
-labels = ["0-7d", "8-14d", "15-30d", "31-60d", "60d+"]
-open_alerts["AgeBucket"] = pd.cut(open_alerts["AgeDays"], bins=bins, labels=labels)
-aging = open_alerts["AgeBucket"].value_counts().reindex(labels, fill_value=0)
-plt.figure(figsize=(8, 4))
-aging.plot(kind="bar", color="#C62828", edgecolor="black")
-plt.title("Open Alerts (Reviewing) - Aging Buckets")
-plt.ylabel("Count"); plt.xticks(rotation=0)
-plt.tight_layout()
-plt.savefig(f"{CHART_DIR}/aging.png", dpi=120); plt.close()
+def save_pie(series, fname):
+    if series.empty: return
+    fig, ax = plt.subplots(figsize=(6, 4.2))
+    palette = ["#E8B22E","#B0413E","#2D2D2D","#7FB539","#5A8FBF","#888888"]
+    ax.pie(series.values,
+           labels=[f"{i} ({v}, {v/series.sum():.1%})"
+                   for i, v in zip(series.index, series.values)],
+           colors=palette[:len(series)])
+    plt.tight_layout(); plt.savefig(f"{CHART_DIR}/{fname}", dpi=160); plt.close()
 
-# ---------- WEEK-OVER-WEEK STATS ----------
-this_week = df[(df[COL_DATE] >= cutoff_7)].shape[0]
-last_week = df[(df[COL_DATE] >= cutoff_7 - timedelta(days=7)) &
-               (df[COL_DATE] <  cutoff_7)].shape[0]
-wow_delta = this_week - last_week
-wow_pct   = (wow_delta / last_week * 100) if last_week else 0
+save_pie(severity_counts, "severity.png")
+save_bar(status_counts,   "status.png",   "Alerts (90d)",       "Status")
+save_bar(rules_plot,      "rules.png",    "Volume of Alerts",   "Alert Rule")
+save_bar(analyst_counts,  "analysts.png", "Alerts Completed",   "Analyst")
 
-# ---------- PDF BUILD ----------
-class PDF(FPDF):
-    def header(self):
-        self.set_font("Helvetica", "B", 14)
-        self.cell(0, 10, "Insider Enhanced Surveillance - Weekly Report", ln=True, align="C")
-        self.set_font("Helvetica", "", 10)
-        self.cell(0, 6, f"Report Date: {REPORT_DATE}", ln=True, align="C")
-        self.ln(4)
+# ---------- DOC ----------
+doc = Document()
 
-    def footer(self):
-        self.set_y(-12)
-        self.set_font("Helvetica", "I", 8)
-        self.cell(0, 8, f"Page {self.page_no()}", align="C")
+hdr = doc.sections[0].header.paragraphs[0]
+hdr.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+if os.path.exists(LOGO_PATH):
+    hdr.add_run().add_picture(LOGO_PATH, width=Inches(0.7))
 
-    def section(self, title):
-        self.set_font("Helvetica", "B", 12)
-        self.set_fill_color(230, 230, 230)
-        self.cell(0, 8, title, ln=True, fill=True)
-        self.ln(2)
+def new_page(title):
+    doc.add_page_break()
+    p = doc.add_paragraph()
+    r = p.add_run("Insider Enhanced Surveillance")
+    r.bold = True; r.font.size = Pt(22)
+    doc.add_paragraph(f"90-Day Operational Report | {title}\n{window_label}")
 
-    def body(self, text):
-        self.set_font("Helvetica", "", 10)
-        self.multi_cell(0, 5, text)
-        self.ln(2)
+# Cover
+p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+r = p.add_run("\n\n\n\nInsider Enhanced Surveillance\n"
+              "90-Day Operational Report – Proofpoint\n")
+r.bold = True; r.font.size = Pt(28)
+c = doc.add_paragraph(window_label); c.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-pdf = PDF()
-pdf.add_page()
-
-# Executive summary
-pdf.section("Executive Summary")
-pdf.body(
-    f"Total alerts last 7 days: {this_week}\n"
-    f"Total alerts prior 7 days: {last_week}\n"
-    f"Week-over-week change: {wow_delta:+d} ({wow_pct:+.1f}%)\n"
-    f"Open alerts (Reviewing): {open_alerts.shape[0]}\n"
-    f"  - Aged >30 days: {int(aging.get('31-60d', 0) + aging.get('60d+', 0))}\n"
-    f"Completed last 90 days: {completed_90.shape[0]} "
-    f"(Issue: {(completed_90[COL_STATUS]=='Issue').sum()}, "
-    f"Non-Issue: {(completed_90[COL_STATUS]=='Non-Issue').sum()})"
-)
-
-# 90-day trends
-pdf.section("90-Day Volume Trend")
-pdf.image(f"{CHART_DIR}/trend_volume.png", w=180)
-
-if os.path.exists(f"{CHART_DIR}/trend_by_type.png"):
-    pdf.add_page()
-    pdf.section("90-Day Trend by Alert Type")
-    pdf.image(f"{CHART_DIR}/trend_by_type.png", w=180)
-
-# Severity
+# Volume & Triage
+new_page("Volume and Triage Metrics")
+doc.add_paragraph(f"Alerts Received: {alerts_received}    "
+                  f"Alerts Pending: {alerts_pending}    "
+                  f"Avg/day: {avg_per_day}")
 if os.path.exists(f"{CHART_DIR}/severity.png"):
-    pdf.add_page()
-    pdf.section("Severity Breakdown - Last 7 Days")
-    pdf.image(f"{CHART_DIR}/severity.png", w=140)
+    doc.add_picture(f"{CHART_DIR}/severity.png", width=Inches(3.2))
+if os.path.exists(f"{CHART_DIR}/status.png"):
+    doc.add_picture(f"{CHART_DIR}/status.png", width=Inches(3.2))
+
+# Rules
+new_page("Alerts by Rule Type Breakdown")
+if os.path.exists(f"{CHART_DIR}/rules.png"):
+    doc.add_picture(f"{CHART_DIR}/rules.png", width=Inches(6.5))
 
 # Analyst
-pdf.add_page()
-pdf.section("Analyst Productivity - Last 90 Days")
-pdf.image(f"{CHART_DIR}/analyst.png", w=180)
+new_page("Alerts Completed by Analyst")
+if os.path.exists(f"{CHART_DIR}/analysts.png"):
+    doc.add_picture(f"{CHART_DIR}/analysts.png", width=Inches(6.5))
 
-# Aging
-pdf.section("Open Alert Aging")
-pdf.image(f"{CHART_DIR}/aging.png", w=160)
+# Highlights
+new_page("Program Highlights")
+doc.add_paragraph("[ADD ACCOMPLISHMENTS HERE BEFORE EXPORTING TO PDF]")
+doc.add_paragraph(f"There were {int(status_counts.get('Issue', 0))} "
+                  f"identified issues over the 90-day period.")
 
-pdf.output(PDF_FILE)
-print(f"Report generated: {PDF_FILE}")
-
-
-
-python -c "import pandas as pd; print(pd.read_csv('alerts.csv').columns.tolist())"
+doc.save(OUTPUT_DOCX)
+print(f"Saved {OUTPUT_DOCX}")
