@@ -1,5 +1,6 @@
 # power.py — IES 90-Day Operational Report (Proofpoint)
 import os
+import numpy as np
 from datetime import datetime, timedelta
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -51,33 +52,59 @@ analyst_counts = (df[df[COL_STATUS].isin(["Non-Issue", "Issue"])]
                   [COL_ANALYST].value_counts())
 
 # ---------- CHARTS ----------
-TD_GREEN = "#00B140"
+TD_GREEN  = "#00B140"
+TD_DARK   = "#2D2D2D"
+TD_ACCENT = "#B0413E"
 plt.rcParams.update({"font.family": "Calibri", "font.size": 11})
 
-def save_bar(series, fname, ylabel, xlabel):
-    if series.empty: return
-    fig, ax = plt.subplots(figsize=(8, 4.2))
-    bars = ax.bar(series.index.astype(str), series.values, color=TD_GREEN)
-    ax.bar_label(bars, padding=3)
-    ax.set_ylabel(ylabel); ax.set_xlabel(xlabel)
+def style(ax):
     ax.spines[["top","right"]].set_visible(False)
+    ax.grid(axis="y", linestyle="--", alpha=0.3)
+    ax.set_axisbelow(True)
+
+def save_bar(series, fname, ylabel, xlabel, color=TD_GREEN, figsize=(8,4.2)):
+    if series.empty: return
+    fig, ax = plt.subplots(figsize=figsize)
+    bars = ax.bar(series.index.astype(str), series.values, color=color, width=0.6)
+    ax.bar_label(bars, padding=3, fontsize=10)
+    ax.set_ylabel(ylabel); ax.set_xlabel(xlabel)
+    style(ax)
     plt.xticks(rotation=15, ha="right")
     plt.tight_layout(); plt.savefig(f"{CHART_DIR}/{fname}", dpi=160); plt.close()
 
-def save_pie(series, fname):
-    if series.empty: return
-    fig, ax = plt.subplots(figsize=(6, 4.2))
-    palette = ["#E8B22E","#B0413E","#2D2D2D","#7FB539","#5A8FBF","#888888"]
-    ax.pie(series.values,
-           labels=[f"{i} ({v}, {v/series.sum():.1%})"
-                   for i, v in zip(series.index, series.values)],
-           colors=palette[:len(series)])
+def save_daily_trend(df, fname):
+    # daily counts across the full 90-day window (fill missing days with 0)
+    daily = (df.groupby(df[COL_DATE].dt.date).size()
+               .reindex(pd.date_range(start, end).date, fill_value=0))
+    fig, ax = plt.subplots(figsize=(11, 4.2))
+    ax.bar(daily.index, daily.values, color=TD_GREEN, width=0.9, label="Daily alerts")
+
+    # 7-day rolling avg as trend line
+    trend = pd.Series(daily.values).rolling(7, min_periods=1).mean()
+    ax.plot(daily.index, trend.values, color=TD_ACCENT, linewidth=2.2,
+            label="7-day rolling avg")
+
+    # linear trendline
+    x = np.arange(len(daily))
+    if len(x) > 1:
+        m, b = np.polyfit(x, daily.values, 1)
+        ax.plot(daily.index, m*x + b, color=TD_DARK, linestyle="--",
+                linewidth=1.5, label="Linear trend")
+
+    ax.set_ylabel("Alerts per day"); ax.set_xlabel("Date")
+    style(ax)
+    ax.legend(loc="upper left", frameon=False)
+    fig.autofmt_xdate()
     plt.tight_layout(); plt.savefig(f"{CHART_DIR}/{fname}", dpi=160); plt.close()
 
-save_pie(severity_counts, "severity.png")
-save_bar(status_counts,   "status.png",   "Alerts (90d)",       "Status")
-save_bar(rules_plot,      "rules.png",    "Volume of Alerts",   "Alert Rule")
-save_bar(analyst_counts,  "analysts.png", "Alerts Completed",   "Analyst")
+# Build the charts
+save_bar(severity_counts, "severity.png", "Number of Alerts", "Severity",
+         color=TD_GREEN, figsize=(6.5,4.0))
+save_bar(status_counts,   "status.png",   "Number of Alerts", "Disposition",
+         color=TD_DARK, figsize=(6.5,4.0))
+save_bar(rules_plot,      "rules.png",    "Volume of Alerts", "Alert Rule")
+save_bar(analyst_counts,  "analysts.png", "Alerts Completed", "Analyst")
+save_daily_trend(df, "daily_trend.png")
 
 # ---------- DOC ----------
 doc = Document()
@@ -103,13 +130,28 @@ c = doc.add_paragraph(window_label); c.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
 # Volume & Triage
 new_page("Volume and Triage Metrics")
-doc.add_paragraph(f"Alerts Received: {alerts_received}    "
-                  f"Alerts Pending: {alerts_pending}    "
-                  f"Avg/day: {avg_per_day}")
-if os.path.exists(f"{CHART_DIR}/severity.png"):
-    doc.add_picture(f"{CHART_DIR}/severity.png", width=Inches(3.2))
-if os.path.exists(f"{CHART_DIR}/status.png"):
-    doc.add_picture(f"{CHART_DIR}/status.png", width=Inches(3.2))
+
+tbl = doc.add_table(rows=1, cols=3)
+tbl.style = "Light Grid Accent 1"
+hdr_cells = tbl.rows[0].cells
+hdr_cells[0].text = "Alerts Received"
+hdr_cells[1].text = "Alerts Pending"
+hdr_cells[2].text = "Avg per Day"
+row = tbl.add_row().cells
+row[0].text = str(alerts_received)
+row[1].text = str(int(alerts_pending))
+row[2].text = str(avg_per_day)
+
+doc.add_paragraph()  # spacer
+doc.add_paragraph("Daily Alert Volume (90 days)").runs[0].bold = True
+doc.add_picture(f"{CHART_DIR}/daily_trend.png", width=Inches(6.8))
+
+doc.add_paragraph()
+doc.add_paragraph("Severity Breakdown").runs[0].bold = True
+doc.add_picture(f"{CHART_DIR}/severity.png", width=Inches(3.3))
+
+doc.add_paragraph("Issue vs Non-Issue").runs[0].bold = True
+doc.add_picture(f"{CHART_DIR}/status.png", width=Inches(3.3))
 
 # Rules
 new_page("Alerts by Rule Type Breakdown")
