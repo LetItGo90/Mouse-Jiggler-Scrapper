@@ -1,0 +1,2 @@
+if(empty(items('Apply_to_each')?['Status']?['Value']), 'Status is blank, ', ''),
+if(equals(items('Apply_to_each')?['Status']?['Value'], 'Reviewing'), 'Status is still Reviewing, ', ''),
