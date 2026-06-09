@@ -1,0 +1,22 @@
+Word,Triggers,Tied to WPV,Not Tied to WPV,WPV Rate,Actual Reason (if not WPV),AMCB Escalations,Recommendation
+Bitch,1,1,0,100%,—,0,KEEP
+Babes,5,5,0,100%,—,0,KEEP
+Slut,1,1,0,100%,—,0,KEEP
+Bullshit,1,1,0,100%,—,1,KEEP
+Nigga,1,1,0,100%,—,0,KEEP
+Murder,1,1,0,100%,—,1,KEEP
+Fuck,12,10,2,83%,Leetcode/security testing,3,KEEP
+Cocaine,1,0,1,0%,Playing games,0,REMOVE
+Sodom,1,0,1,0%,Playing games,0,REMOVE
+Cunts,1,0,1,0%,WhatsApp,0,REMOVE
+Bimbo,1,0,1,0%,Threat unrelated to word,1,REMOVE
+Weewee,3,0,3,0%,Playing games,0,REMOVE
+Hard on,1,0,1,0%,Unknown,0,REMOVE
+Gtfo,1,0,1,0%,Playing games,0,REMOVE
+Negro,1,0,1,0%,Generating EIN for customer,0,REMOVE
+Whore,1,0,1,0%,Playing games,0,REMOVE
+Vagina,1,0,1,0%,Shopping for feminine products,0,REMOVE
+Tits,1,0,1,0%,Exit survey,0,REMOVE
+Booty,1,0,1,0%,Playing games,0,REMOVE
+Opium,1,0,1,0%,Google search / inappropriate convo,0,REMOVE
+Nazi,2,0,1,0%,Unapproved cloud solution,0,REVIEW
