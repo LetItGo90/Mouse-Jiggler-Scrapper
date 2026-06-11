@@ -1,0 +1,59 @@
+Word,Triggers,Directly Tied to WPV,Not Directly Tied,WPV Rate,Actual Reason (if not WPV),AMCB Escalations,Recommendation
+Bitch,2,3,0,100%,—,0,KEEP
+Babes,8,6,2,75%,User customers login name,0,KEEP
+Slut,1,1,0,100%,—,1,KEEP
+Bullshit,2,2,0,100%,—,0,KEEP
+Nigga,7,4,3,57%,Searching inappropriate videos and behavior,1,KEEP
+Murder,2,2,0,100%,—,1,KEEP
+Fuck,31,29,2,94%,Leetcode/security testing,3,KEEP
+Cocaine,2,0,2,0%,Playing games,0,REMOVE
+Sodom,1,0,1,0%,Playing games,0,REMOVE
+Cunts,1,0,1,0%,WhatsApp,1,REMOVE
+Bimbo,1,0,1,0%,Threat unrelated to word,1,REMOVE
+Weewee,3,0,3,0%,Playing games,0,REMOVE
+Hard on,1,0,1,0%,Unknown,0,REMOVE
+Gtfo,1,0,1,0%,Playing games,0,REMOVE
+Negro,1,0,1,0%,Generating EIN for customer,0,REMOVE
+Whore,1,0,1,0%,Playing games,0,REMOVE
+Vagina,1,0,1,0%,Shopping for feminine products,0,REMOVE
+Tits,2,1,1,50%,Exit survey,0,REVIEW
+Booty,1,0,1,0%,Playing games,0,REMOVE
+Opium,1,0,1,0%,Google search / inappropriate convo,0,REMOVE
+Nazi,3,0,3,0%,Unapproved cloud solution / account activity,0,REMOVE
+Condom,1,0,1,0%,Playing games,0,REMOVE
+Shite,2,0,2,0%,Japanese word meaning 'to do',0,REMOVE
+gspot,5,0,5,0%,Shopping online,0,REMOVE
+stfu,1,1,0,100%,—,0,KEEP
+breast,1,1,0,100%,—,0,REVIEW
+lmfao,17,13,4,76%,In a relationship / playing games / viewing nsfw content,0,KEEP
+dammit,1,0,1,0%,User was working extra jobs,0,REMOVE
+dickhead,1,0,1,0%,In a relationship,0,REMOVE
+doosh,1,0,1,0%,Viewing account info without permission,0,REMOVE
+
+
+COMBINED STATS (LAST 2 YEARS)
+========================================
+Total Alerts: 5,904
+Total Non-Issue: 5,870
+Total Issue: 98
+False Positive Rate: 99.4%
+True Positive Rate: 1.66%
+
+----------------------------------------
+CURRENT RULE: Typing workplace violence words v2
+Who: Login account [domain\]name is not RNET.TDBFG.COM\cummik3, bkng.net\ynegron
+Did What: Typed text contain value from list: Workplace violence words
+List: 369 words currently
+Non-Issue: 2888 | Issue: 34
+
+----------------------------------------
+OLD RULE: Typing workplace violence words
+Who: Login / secondary user [domain\]name is not RNET.TDBFG.COM\cummik3
+Did What: Typed text contain value from list: Workplace violence words
+List: 369 words currently
+Non-Issue: 2982 | Issue: 64
+
+----------------------------------------
+CHANGE BETWEEN RULES:
+Added exclusion for user: bkng.net\ynegron
+No changes to word list
