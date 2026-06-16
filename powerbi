@@ -1,6 +1,26 @@
-Alerts Last 90 Days = 
+Number of Alerts by reporting period = 
 CALCULATE(
     COUNTROWS('Proof Point Alerts'),
-    REMOVEFILTERS('Proof Point Alerts'[AlertDate]),
-    'Proof Point Alerts'[AlertDate] >= TODAY() - 90
+    'Proof Point Alerts'[AlertRule] = 'Rule Types'[AlertRule],
+    DATESINPERIOD(
+        'Proof Point Alerts'[AlertDate],
+        TODAY(),
+        -30,
+        DAY
+    )
+)
+
+
+Number of Alerts by reporting period = 
+CALCULATE(
+    COUNTROWS('Proof Point Alerts'),
+    FILTER(
+        'Proof Point Alerts',
+        'Proof Point Alerts'[AlertRule] = 'Rule Types'[AlertRule]
+    ),
+    FILTER(
+        'Proof Point Alerts',
+        'Proof Point Alerts'[AlertDate] >= TODAY() - 30
+            && 'Proof Point Alerts'[AlertDate] <= TODAY()
+    )
 )
