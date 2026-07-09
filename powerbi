@@ -1,7 +1,7 @@
 concat(
   if(equals(items('Apply_to_each')?['SessionID'], null), 'Session ID, ', ''),
   if(empty(items('Apply_to_each')?['ACF2ID']), 'ACF2 ID, ', ''),
-  if(not(or(equals(items('Apply_to_each')?['Status']?['Value'], 'Non-Issue'), equals(items('Apply_to_each')?['Status']?['Value'], 'Issue'))), 'Status, ', ''),
+  if(not(or(equals(items('Apply_to_each')?['Status']?['Value'], 'Non-Issue'), equals(items('Apply_to_each')?['Status']?['Value'], 'Issue'))), concat('Status (', if(empty(items('Apply_to_each')?['Status']?['Value']), 'missing', items('Apply_to_each')?['Status']?['Value']), '), '), ''),
   if(equals(items('Apply_to_each')?['AlertDate'], null), 'AlertDate, ', ''),
   if(empty(items('Apply_to_each')?['Severity']?['Value']), 'Severity, ', ''),
   if(empty(items('Apply_to_each')?['AlertRule']), 'AlertRule, ', ''),
@@ -9,5 +9,3 @@ concat(
   if(equals(items('Apply_to_each')?['AnalysisCompletionDate'], null), 'AnalysisCompletionDate, ', ''),
   if(empty(items('Apply_to_each')?['Comments']), 'Comments, ', '')
 )
-
-[View Alert](https://myteam.td.com/teams/InsiderProtectProgramTeam/Lists/Alerts%20Reporting/DispForm.aspx?ID=@{items('Apply_to_each')?['ID']})
