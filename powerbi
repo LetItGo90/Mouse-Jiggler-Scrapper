@@ -1,26 +1,11 @@
-Number of Alerts by reporting period = 
-CALCULATE(
-    COUNTROWS('Proof Point Alerts'),
-    'Proof Point Alerts'[AlertRule] = 'Rule Types'[AlertRule],
-    DATESINPERIOD(
-        'Proof Point Alerts'[AlertDate],
-        TODAY(),
-        -30,
-        DAY
-    )
-)
-
-
-Number of Alerts by reporting period = 
-CALCULATE(
-    COUNTROWS('Proof Point Alerts'),
-    FILTER(
-        'Proof Point Alerts',
-        'Proof Point Alerts'[AlertRule] = 'Rule Types'[AlertRule]
-    ),
-    FILTER(
-        'Proof Point Alerts',
-        'Proof Point Alerts'[AlertDate] >= TODAY() - 30
-            && 'Proof Point Alerts'[AlertDate] <= TODAY()
-    )
+concat(
+  if(equals(items('Apply_to_each')?['SessionID'], null), 'Session ID, ', ''),
+  if(empty(items('Apply_to_each')?['ACF2ID']), 'ACF2 ID, ', ''),
+  if(not(or(equals(items('Apply_to_each')?['Status']?['Value'], 'Non-Issue'), equals(items('Apply_to_each')?['Status']?['Value'], 'Issue'))), 'Status, ', ''),
+  if(equals(items('Apply_to_each')?['AlertDate'], null), 'AlertDate, ', ''),
+  if(empty(items('Apply_to_each')?['Severity']?['Value']), 'Severity, ', ''),
+  if(empty(items('Apply_to_each')?['AlertRule']), 'AlertRule, ', ''),
+  if(equals(items('Apply_to_each')?['ActionDate'], null), 'ActionDate, ', ''),
+  if(equals(items('Apply_to_each')?['AnalysisCompletionDate'], null), 'AnalysisCompletionDate, ', ''),
+  if(empty(items('Apply_to_each')?['Comments']), 'Comments, ', '')
 )
