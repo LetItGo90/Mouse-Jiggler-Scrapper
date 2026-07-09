@@ -9,3 +9,5 @@ concat(
   if(equals(items('Apply_to_each')?['AnalysisCompletionDate'], null), 'AnalysisCompletionDate, ', ''),
   if(empty(items('Apply_to_each')?['Comments']), 'Comments, ', '')
 )
+
+[View Alert](https://myteam.td.com/teams/InsiderProtectProgramTeam/Lists/Alerts%20Reporting/DispForm.aspx?ID=@{items('Apply_to_each')?['ID']})
