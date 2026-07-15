@@ -1,11 +1,18 @@
-concat(
-  if(equals(items('Apply_to_each')?['SessionID'], null), 'Session ID, ', ''),
-  if(empty(items('Apply_to_each')?['ACF2ID']), 'ACF2 ID, ', ''),
-  if(not(or(equals(items('Apply_to_each')?['Status']?['Value'], 'Non-Issue'), equals(items('Apply_to_each')?['Status']?['Value'], 'Issue'))), concat('Status (', if(empty(items('Apply_to_each')?['Status']?['Value']), 'missing', items('Apply_to_each')?['Status']?['Value']), '), '), ''),
-  if(equals(items('Apply_to_each')?['AlertDate'], null), 'AlertDate, ', ''),
-  if(empty(items('Apply_to_each')?['Severity']?['Value']), 'Severity, ', ''),
-  if(empty(items('Apply_to_each')?['AlertRule']), 'AlertRule, ', ''),
-  if(equals(items('Apply_to_each')?['ActionDate'], null), 'ActionDate, ', ''),
-  if(equals(items('Apply_to_each')?['AnalysisCompletionDate'], null), 'AnalysisCompletionDate, ', ''),
-  if(empty(items('Apply_to_each')?['Comments']), 'Comments, ', '')
-)
+function main(workbook: ExcelScript.Workbook): object[] {
+  let sheet = workbook.getActiveWorksheet();
+  let usedRange = sheet.getUsedRange();
+  let values = usedRange.getValues();
+  
+  let headers = values[0] as string[];
+  let results: object[] = [];
+  
+  for (let i = 1; i < values.length; i++) {
+    let row: {[key: string]: any} = {};
+    for (let j = 0; j < headers.length; j++) {
+      row[headers[j]] = values[i][j];
+    }
+    results.push(row);
+  }
+  
+  return results;
+}
