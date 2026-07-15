@@ -1,18 +1,5 @@
-function main(workbook: ExcelScript.Workbook): object[] {
-  let sheet = workbook.getActiveWorksheet();
-  let usedRange = sheet.getUsedRange();
-  let values = usedRange.getValues();
-  
-  let headers = values[0] as string[];
-  let results: object[] = [];
-  
-  for (let i = 1; i < values.length; i++) {
-    let row: {[key: string]: any} = {};
-    for (let j = 0; j < headers.length; j++) {
-      row[headers[j]] = values[i][j];
-    }
-    results.push(row);
-  }
-  
-  return results;
-}
+@and(
+  not(startsWith(items('Apply_to_each'), 'Identifier')),
+  contains(items('Apply_to_each'), ','),
+  greater(length(items('Apply_to_each')), 10)
+)
