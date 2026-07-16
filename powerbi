@@ -11,3 +11,5 @@ if(greater(length(split(items('Apply_to_each_1'), ',')), 4), split(items('Apply_
 if(greater(length(split(items('Apply_to_each_1'), ',')), 10), split(items('Apply_to_each_1'), ',')[10], '')
 
 concat('Title eq ''', items('Apply_to_each_1')?['Identifier'], '''')
+
+concat('Title eq ''', split(items('Apply_to_each'), ',')[0], '''')
