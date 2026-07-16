@@ -3,3 +3,5 @@ Device_name	if(greater(length(split(items('Apply_to_each'), ',')), 1), split(ite
 Serial_number	if(greater(length(split(items('Apply_to_each'), ',')), 2), split(items('Apply_to_each'), ',')[2], '')
 Policy_rule	if(greater(length(split(items('Apply_to_each'), ',')), 3), split(items('Apply_to_each'), ',')[3], '')
 Freeze_status	if(greater(length(split(items('Apply_to_each'), ',')), 6), split(items('Apply_to_each'), ',')[6], '')
+
+concat('Title eq ''', split(items('Apply_to_each_1'), ',')[0], '''')
