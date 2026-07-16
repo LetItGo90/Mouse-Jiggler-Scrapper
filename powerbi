@@ -1,5 +1,5 @@
-@and(
-  not(startsWith(items('Apply_to_each'), 'Identifier')),
-  contains(items('Apply_to_each'), ','),
-  greater(length(items('Apply_to_each')), 10)
-)
+Title	if(greater(length(split(items('Apply_to_each'), ',')), 0), split(items('Apply_to_each'), ',')[0], '')
+Device_name	if(greater(length(split(items('Apply_to_each'), ',')), 1), split(items('Apply_to_each'), ',')[1], '')
+Serial_number	if(greater(length(split(items('Apply_to_each'), ',')), 2), split(items('Apply_to_each'), ',')[2], '')
+Policy_rule	if(greater(length(split(items('Apply_to_each'), ',')), 3), split(items('Apply_to_each'), ',')[3], '')
+Freeze_status	if(greater(length(split(items('Apply_to_each'), ',')), 6), split(items('Apply_to_each'), ',')[6], '')
