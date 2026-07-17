@@ -19,3 +19,5 @@ concat('https://cc.absolute.com/assets/device/', split(items('Apply_to_each'), '
 {"Url": "https://cc.absolute.com/assets/device/@{split(items('Apply_to_each'), ',')[0]}/history", "Description": "View Device"}
 
 concat('{"Description":"View Device","Url":"https://cc.absolute.com/assets/device/', split(items('Apply_to_each'), ',')[0], '/history"}')
+
+json(concat('{"Description":"View Device","Url":"https://cc.absolute.com/assets/device/', split(items('Apply_to_each'), ',')[0], '/history"}'))
