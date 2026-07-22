@@ -21,3 +21,130 @@ concat('https://cc.absolute.com/assets/device/', split(items('Apply_to_each'), '
 concat('{"Description":"View Device","Url":"https://cc.absolute.com/assets/device/', split(items('Apply_to_each'), ',')[0], '/history"}')
 
 json(concat('{"Description":"View Device","Url":"https://cc.absolute.com/assets/device/', split(items('Apply_to_each'), ',')[0], '/history"}'))
+
+
+---
+# Alert Tracker Automation - User Guide
+
+## Overview
+
+This Power Automate flow automatically processes two email reports and consolidates the data into a SharePoint Alert Tracker list. It captures users flagged for geofencing violations and enriches their records with device/location information.
+
+---
+
+## How It Works
+
+### Two Email Sources
+
+| Email | Purpose |
+|-------|---------|
+| Geofencing Freeze New Devices | Creates NEW items in Alert Tracker (sets Title/identifier) |
+| Monitored Devices | ENRICHES existing items with device/location data |
+
+---
+
+## Flow Logic
+
+### Part 1: Freeze Email Processing
+
+1. Gets emails from Geofencing Freeze folder
+2. Extracts CSV attachment
+3. Decodes and splits CSV into rows
+4. For each row:
+   - **Condition 2:** Checks if row is not empty
+   - **De-duplicate:** Checks if Title already exists in SharePoint
+   - If new → Creates item
+   - If exists → Skips
+
+### Part 2: Monitored Devices Processing
+
+1. Gets emails from Monitored Devices folder
+2. Extracts CSV attachment
+3. Decodes and splits CSV into rows
+4. For each row:
+   - **Condition 1:** Checks if row is not empty
+   - **Get Items:** Finds matching Title in SharePoint
+   - **Condition 3:** Checks if match exists
+   - **Condition 4:** Checks if Violation_Country is empty
+     - True (first enrichment) → Sets BOTH Violation_Country AND Current_Country
+     - False (already enriched) → Sets ONLY Current_Country
+
+---
+
+## Country Tracking Logic
+
+| Field | Purpose | When It's Set |
+|-------|---------|---------------|
+| Violation_Country | Where user was when FIRST flagged | Only on first enrichment, never changes |
+| Current_Country | Where user is NOW | Updates every time flow runs |
+
+---
+
+## Key Expressions Used
+
+### Empty Row Check
+
+greater(length(split(items('Apply_to_each'), ',')), 1)
+
+
+### Match Found Check
+
+length(body('Get_items')?['value']) > 0
+
+
+### Violation Country Empty Check
+
+empty(body('Get_items')?['value'][0]?['Violation_Country'])
+
+
+### Extract CSV Column Value
+
+if(greater(length(split(items('Apply_to_each'), ',')), 1), split(items('Apply_to_each'), ',')[X], '')
+sql_more
+
+*(Replace X with column index - 0-based)*
+
+---
+
+## CSV Column Mapping
+
+| Index | Field |
+|-------|-------|
+| [0] | First column |
+| [1] | Second column |
+| [10] | Country |
+
+*Update index numbers if CSV column order changes*
+
+---
+
+## Troubleshooting
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| Invalid ID / Update failed | No matching Title in SharePoint | Condition 3 should check `length > 0` |
+| Empty row errors | CSV has blank rows | Condition 1/2 filters these |
+| Data not enriching | Identifier mismatch | Check for exact match, extra spaces |
+
+---
+
+## Making Changes
+
+### Change CSV column mapping:
+1. Find Update Item or Create Item action
+2. Edit: `split(items('Apply_to_each'), ',')[X]`
+3. Change X to correct column index
+
+### Add new SharePoint column:
+1. Add column to SharePoint list
+2. Edit Update Item / Create Item action
+3. Map new field to correct CSV column
+
+---
+
+## Testing
+
+1. Send test email with CSV attachment to mailbox
+2. Run flow manually or wait for trigger
+3. Check SharePoint list for new/updated items
+4. Check flow run history for errors
