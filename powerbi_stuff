@@ -1,2 +1,6 @@
 if(empty(items('Apply_to_each')?['Status']?['Value']), 'Status is blank, ', ''),
 if(equals(items('Apply_to_each')?['Status']?['Value'], 'Reviewing'), 'Status is still Reviewing, ', ''),
+
+greaterOrEquals(div(sub(ticks(utcNow()), ticks(first(body('De-Duplicate')?['value'])?['Status_Updated'])), 864000000000), 30)  is equal to  true
+
+length(body('De-Duplicate')?['value']) is equal to 0
