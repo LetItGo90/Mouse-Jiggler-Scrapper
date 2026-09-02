@@ -1,0 +1,136 @@
+🛡️ CTI COMMAND CENTER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Owner: [Your Name]
+Week of: [Date]
+Current phase: 🔵 P0 — Foundation
+First milestone: Complete one “signal → action → closure” workflow
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚦 STATUS KEY
+
+🔴 Urgent / act now
+🟠 Waiting on someone / blocked
+🔵 In progress
+🟢 Complete
+⚪ Parked for later
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⭐ THIS WEEK — ONLY 3 PRIORITIES
+
+☐ 1. _______________________________________________
+
+☐ 2. _______________________________________________
+
+☐ 3. _______________________________________________
+
+🟠 Waiting on:
+• _________________________________________________
+• _________________________________________________
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧭 MY CTI PATH
+
+① FOUNDATION
+   Learn the environment, people, tools, scope, and owners.
+
+② PRIORITIES
+   Define PIRs and identify critical technologies/assets.
+
+③ PILOT
+   Take one relevant threat signal from intake to action and closure.
+
+④ ROUTINE
+   Build reporting cadence, feedback loop, and useful metrics.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🟦 01 · FOUNDATION — P0
+
+Goal:
+Understand what already exists and who CTI supports.
+
+Next actions:
+☐ Review existing CTI reports, alerts, tools, dashboards, and tickets.
+☐ Identify CTI data sources: SIEM, EDR, VM, CMDB, cloud, DNS, ticketing.
+☐ Meet IR / SOC.
+☐ Meet Vulnerability Management.
+☐ Meet engineering / Splunk / CTI-platform owner.
+☐ Clarify Enterprise CTI vs. OT/ICS CTI boundaries.
+
+Done when:
+🟢 I know the tools, stakeholders, escalation paths, and major gaps.
+
+Open page: [01 — People, Scope & Meetings]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🟪 02 · PRIORITIES — P1
+
+Goal:
+Identify the intelligence questions that will lead to real decisions.
+
+Next actions:
+☐ Draft 3–5 PIRs.
+☐ Assign a stakeholder and action owner to every PIR.
+☐ Build a short list of critical technologies to watch.
+☐ Identify where to validate “Are we affected?”
+
+Done when:
+🟢 Every active PIR has an owner, action, source, and delivery method.
+
+Open page: [02 — PIRs & Collection]
+Open page: [03 — Assets & Technology Watchlist]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🟧 03 · FIRST PILOT — P2
+
+Goal:
+Prove CTI can move intelligence into a completed defensive action.
+
+Recommended pilot:
+☐ Actively exploited vulnerability affecting a high-priority technology.
+
+Workflow:
+Signal → Relevance check → Asset validation → Owner → Action → Closure
+
+Done when:
+🟢 One signal resulted in a tracked patch, mitigation, hunt, block, or accepted risk.
+
+Open page: [05 — Findings & Actions]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🟩 04 · ROUTINE — P3
+
+Goal:
+Deliver intelligence people can use and improve it through feedback.
+
+Next actions:
+☐ Define urgent-alert format.
+☐ Define weekly CTI update format.
+☐ Ask stakeholders whether reporting was timely and useful.
+☐ Track actions completed—not just reports sent.
+
+Done when:
+🟢 CTI products consistently lead to decisions, actions, or improved visibility.
+
+Open page: [06 — Reports & Feedback]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⛔ NOT YET
+
+☐ Do not build a giant APT / threat-actor list.
+☐ Do not monitor everything at once.
+☐ Do not send raw IOC lists with no “so what?”
+☐ Do not build an entire asset inventory manually.
+☐ Do not automate blocking before the workflow is proven.
+☐ Do not make every threat “high priority.”
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ NEXT MILESTONE
+
+I will know the foundation is working when:
+
+☐ Key stakeholders and action owners are mapped.
+☐ 3–5 PIRs are agreed upon.
+☐ Critical technologies/assets are identified.
+☐ One threat signal goes from intake to closed action.
+☐ Feedback is captured and the workflow improves.
