@@ -1,17 +1,4 @@
-markdown
 
-# CTI WORKFLOW / PIR / THREAT-PRIORITY CANVAS
-
-> **Owner:** [Your name]  
-> **Version:** 0.1  
-> **Last updated:** [Date]  
-> **Purpose:** Build an intelligence process that gives the right people relevant information they can act on.
-
----
-
-## NORTH-STAR WORKFLOW
-
-```text
 Threat signal
     → Is it relevant to us?
     → Do we use or own the affected technology / asset / data?
@@ -648,3 +635,1112 @@ text
    signal → relevance → affected check → owner → action → closure.
 6. Feedback is collected and the workflow is improved.
 
+Parameters
+· 1:30 PM
+Bot image for GPT-5.6-Terra
+
+GPT-5.6-Terra
+
+Yes — it did cut out a lot. That was a shortened example, not a true reformat of your original.
+
+Below preserves the full original content, but removes the Markdown-specific parts: no # headings, blockquotes, code fences, or Markdown tables. Copy from the title down into OneNote.
+
+════════════════════════════════════════════════════════════
+CTI WORKFLOW • PIR • THREAT-PRIORITY CANVAS
+════════════════════════════════════════════════════════════
+
+Owner: [Your name]
+Version: 0.1
+Last updated: [Date]
+
+Purpose
+Build an intelligence process that gives the right people relevant information they can act on.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NORTH-STAR WORKFLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Threat Signal
+↓
+Is it relevant to us?
+↓
+Do we use or own the affected technology, asset, or data?
+↓
+Is there evidence of exposure, targeting, or compromise?
+↓
+Who owns the action?
+↓
+What should they do?
+↓
+Was the action completed — and was the intelligence useful?
+
+★ Core Rule
+Every CTI activity should connect to a stakeholder decision or action.
+
+Stakeholder Decision Flow
+
+Stakeholder decision
+→ Priority Intelligence Requirement (PIR)
+→ Essential Elements of Information (EEIs)
+→ Collection source / method
+→ Intelligence product
+→ Action owner
+→ Outcome / feedback
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. PRIORITY ROADMAP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+P0 — Learn Current State
+Main goal: Understand what already exists
+Deliverable: Current-State Snapshot
+Done when: I know the tools, reports, stakeholders, access, and known gaps.
+
+P0 — Define Scope and Owners
+Main goal: Know who CTI supports and who acts
+Deliverable: Scope + Stakeholder / Owner Map
+Done when: IR, VM, Engineering, IAM, and CTI boundaries are known.
+
+P1 — Set PIRs
+Main goal: Decide what intelligence matters most
+Deliverable: PIR Register
+Done when: Three to five approved, actionable PIRs exist.
+
+P1 — Build Asset / Technology Baseline
+Main goal: Answer: “Are we affected?”
+Deliverable: CTI Asset / Technology Watchlist
+Done when: Critical systems, owners, and inventory sources are identified.
+
+P2 — Build Threat-Priority Scenarios
+Main goal: Focus on realistic enterprise threats
+Deliverable: Threat Priority Matrix
+Done when: Five or fewer prioritized scenarios are documented.
+
+P2 — Build Collection Plan
+Main goal: Decide how PIRs will be answered
+Deliverable: Collection Plan
+Done when: Each PIR has sources, triggers, owners, and outputs.
+
+P2 — Run One Operational Pilot
+Main goal: Prove the workflow works
+Deliverable: One completed end-to-end use case
+Done when: Signal → validation → action → closure is documented.
+
+P3 — Publish and Measure
+Main goal: Sustain useful intelligence delivery
+Deliverable: Product cadence + metrics
+Done when: Stakeholders receive useful products and provide feedback.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. START HERE — MY IMMEDIATE TASK QUEUE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+This Week
+
+☐ Complete any remaining onboarding, access, account, training, or approval requirements.
+
+☐ Review existing CTI folders, reports, tickets, dashboards, alerts, watchlists, and prior investigations.
+
+☐ Identify the current CTI tools and internal data sources available to me.
+
+☐ Schedule discovery meetings with:
+☐ Incident Response / SOC
+☐ Vulnerability Management
+☐ Engineering / Splunk / CTI-platform owner
+☐ IAM / Email Security, if applicable
+☐ Other CTI analyst or OT/ICS CTI team
+
+☐ Start the Current-State Snapshot below.
+
+☐ Start the Stakeholder / Owner Map below.
+
+☐ Draft no more than five initial PIRs.
+
+☐ Do not build a large APT list, large IOC list, or broad monitoring project yet.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. P0 — CURRENT-STATE SNAPSHOT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Goal
+Understand what the organization already has before creating new workflows, reports, alerts, or integrations.
+
+Actions
+
+☐ Identify existing CTI products and reports.
+
+☐ Identify existing threat-intelligence platforms, alerting rules, dashboards, and profiles.
+
+☐ Identify existing Splunk searches, detections, dashboards, and investigation workflows.
+
+☐ Identify existing asset, vulnerability, endpoint, cloud, DNS, and CMDB data sources.
+
+☐ Identify active CTI-related tickets, cases, watchlists, and recurring reports.
+
+☐ Identify existing escalation paths for urgent findings.
+
+☐ Identify what has already been attempted, disabled, or considered too noisy.
+
+☐ Identify access gaps, approval needs, and unanswered questions.
+
+────────────────────────────────────────────────────────────
+CURRENT-STATE SNAPSHOT — WORKING NOTES
+────────────────────────────────────────────────────────────
+
+Existing CTI tools / platforms
+• [Enter here]
+
+Existing internal data sources
+
+• Asset inventory / CMDB:
+[Enter here]
+
+• Vulnerability management:
+[Enter here]
+
+• EDR:
+[Enter here]
+
+• SIEM / Splunk:
+[Enter here]
+
+• Cloud inventory:
+[Enter here]
+
+• DNS / domain inventory:
+[Enter here]
+
+• Ticketing / case management:
+[Enter here]
+
+Existing CTI products
+
+• Daily:
+[Enter here]
+
+• Weekly:
+[Enter here]
+
+• Monthly:
+[Enter here]
+
+• Ad hoc / incident support:
+[Enter here]
+
+Existing alerts / monitoring
+• [Enter here]
+
+Known stakeholders
+• [Enter here]
+
+Known action owners
+• [Enter here]
+
+Known gaps / questions
+• [Enter here]
+
+Access or training still needed
+• [Enter here]
+
+Definition of Done
+
+☐ I can explain what CTI currently does.
+
+☐ I know what tools and data sources exist.
+
+☐ I know what work should not be duplicated.
+
+☐ I know the major gaps that need clarification.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. P0 — DEFINE CTI SCOPE, STAKEHOLDERS, AND ACTION OWNERS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Goal
+Know exactly who CTI supports, what is in scope, and who is responsible for acting on intelligence.
+
+────────────────────────────────────────────────────────────
+SCOPE STATEMENT
+────────────────────────────────────────────────────────────
+
+Enterprise CTI is responsible for:
+• [Enter here]
+
+Enterprise CTI is not responsible for:
+• [Enter here]
+
+OT/ICS CTI is responsible for:
+• [Enter here]
+
+Shared / overlap areas:
+• [Enter here]
+
+Escalation or coordination trigger:
+• [Enter here]
+
+Approved monitoring scope
+
+• Organization domains:
+[Enter here]
+
+• Public IP ranges:
+[Enter here]
+
+• Cloud assets:
+[Enter here]
+
+• Brands:
+[Enter here]
+
+• High-risk roles:
+[Enter here]
+
+• Critical vendors / partners:
+[Enter here]
+
+⚠ Authorization Guardrail
+Do not monitor employees, executives, partners, domains, or external assets unless there is an approved operational purpose and authorization.
+
+────────────────────────────────────────────────────────────
+STAKEHOLDER / OWNER MAP
+────────────────────────────────────────────────────────────
+
+Incident Response / SOC
+• What they need: Investigation context, TTPs, IOCs, scoping leads
+• What they can do: Hunt, investigate, contain, eradicate
+• Urgent contact path: [Enter here]
+• Primary action owner: [Enter here]
+
+Vulnerability Management
+• What they need: Exploited vulnerabilities, affected technologies
+• What they can do: Validate, prioritize, patch, mitigate
+• Urgent contact path: [Enter here]
+• Primary action owner: [Enter here]
+
+Engineering / Platform Owners
+• What they need: Exposure and technical remediation context
+• What they can do: Patch, harden, remove exposure, tune controls
+• Urgent contact path: [Enter here]
+• Primary action owner: [Enter here]
+
+IAM / Email Security
+• What they need: Phishing, credential theft, MFA/token abuse
+• What they can do: Block, reset, revoke, investigate sign-ins
+• Urgent contact path: [Enter here]
+• Primary action owner: [Enter here]
+
+Risk / Leadership
+• What they need: Mission/business impact and decisions needed
+• What they can do: Prioritize resources, accept or reduce risk
+• Urgent contact path: [Enter here]
+• Primary action owner: [Enter here]
+
+OT/ICS CTI
+• What they need: Shared threats, dependencies, overlap cases
+• What they can do: Coordinate and route findings
+• Urgent contact path: [Enter here]
+• Primary action owner: [Enter here]
+
+────────────────────────────────────────────────────────────
+QUESTIONS FOR EVERY STAKEHOLDER
+────────────────────────────────────────────────────────────
+
+    What decisions do you make that intelligence could improve?
+
+    What actions can your team take after receiving intelligence?
+
+    What threats or events are most disruptive to your work?
+
+    What information do you need before you can act?
+
+    How quickly do you need it?
+
+    What format is easiest for you to use?
+
+    What information has been useful in the past?
+
+    What intelligence has been too noisy, vague, late, or unhelpful?
+
+    Who owns remediation or follow-up?
+
+    How should urgent findings be delivered?
+
+────────────────────────────────────────────────────────────
+ROLE-SPECIFIC DISCOVERY QUESTIONS
+────────────────────────────────────────────────────────────
+
+Incident Response / SOC
+
+☐ What incident types occur most often?
+
+☐ What intrusion paths worry you most?
+
+☐ What information makes active investigations easier?
+
+☐ What logs, tools, and telemetry are available for hunting?
+
+☐ What would CTI need to provide during an incident?
+
+☐ Which actor, malware, infrastructure, or TTP context is most useful?
+
+☐ What would make an alert actionable rather than noisy?
+
+Vulnerability Management
+
+☐ What is the authoritative source for asset and software inventory?
+
+☐ How do you currently identify affected assets after a vulnerability is released?
+
+☐ How are actively exploited vulnerabilities prioritized?
+
+☐ Who owns patching, mitigation, validation, and risk acceptance?
+
+☐ Which systems are internet-facing, identity-related, email-related, remote-access, or mission-critical?
+
+☐ What information would help prioritize a vulnerability beyond CVSS?
+
+Engineering / Splunk / CTI Platform Owner
+
+☐ What CTI alerts, profiles, rules, and integrations already exist?
+
+☐ Is the CTI platform integrated with Splunk, ticketing, EDR, or another system?
+
+☐ What alerts are useful, noisy, disabled, or unowned?
+
+☐ What data can CTI search internally?
+
+☐ Who approves new rules, alerts, integrations, or automation?
+
+☐ What approved domains, IP ranges, cloud assets, and brands can be monitored?
+
+Other CTI / OT-ICS CTI Team
+
+☐ What is explicitly owned by each CTI team?
+
+☐ What systems, vendors, identities, or dependencies overlap?
+
+☐ What should trigger a joint investigation or escalation?
+
+☐ What reporting should be shared?
+
+☐ Who has final ownership when a finding affects both environments?
+
+Definition of Done
+
+☐ Scope is documented.
+
+☐ Key stakeholder contacts are known.
+
+☐ Urgent escalation paths are known.
+
+☐ Major action owners are identified.
+
+☐ Enterprise IT and OT/ICS CTI boundaries are understood.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. P1 — BUILD THE PIR REGISTER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Goal
+Create a short, prioritized list of intelligence questions that support real decisions and actions.
+
+────────────────────────────────────────────────────────────
+PIR RULE
+────────────────────────────────────────────────────────────
+
+A PIR is not just a topic.
+
+Too broad / not actionable
+
+• Ransomware
+• Phishing
+• APT groups
+• Vulnerabilities
+
+Actionable PIR example
+
+Which actively exploited vulnerabilities or exploit campaigns affect our internet-facing, identity, email, remote-access, cloud, or critical technologies — and what action should the responsible owner take?
+
+PIR Formula
+
+Decision / action needed
+→ Intelligence question
+→ Required EEIs
+→ Collection source
+→ Delivery method
+→ Action owner
+→ Measure of success
+
+────────────────────────────────────────────────────────────
+INITIAL PIR REGISTER — DRAFT
+────────────────────────────────────────────────────────────
+
+Use only three to five PIRs to start.
+These are drafts until stakeholders validate them.
+
+PIR-01 — Exploited Vulnerabilities Affecting Technologies We Use
+• Intelligence question: Which actively exploited vulnerabilities or exploit campaigns affect technologies we use?
+• Intel 471 GIR tags: GIR 2, GIR 5
+• Primary stakeholders: Vulnerability Management, Engineering, Incident Response
+• Expected action: Patch, mitigate, validate exposure, hunt
+
+PIR-02 — Intelligence Supporting Active Incident Response
+• Intelligence question: What intelligence will help IR investigate, scope, contain, and understand an active incident?
+• Intel 471 GIR tags: GIR 1, GIR 3, GIR 5
+• Primary stakeholders: Incident Response, SOC, Forensics
+• Expected action: Investigate, hunt, contain, eradicate
+
+PIR-03 — Phishing, Credential Theft, MFA Abuse, and Account Takeover
+• Intelligence question: Are our domains, identities, users, or trusted partners being targeted through phishing, credential theft, MFA abuse, or account takeover?
+• Intel 471 GIR tags: GIR 4, GIR 5
+• Primary stakeholders: IAM, Email Security, Incident Response
+• Expected action: Block, reset, revoke, investigate, notify
+
+PIR-04 — Relevant Threat Behaviors and Defensive Gaps
+• Intelligence question: Which threat behaviors are most relevant to our environment, and where do we have detection, logging, or control gaps?
+• Intel 471 GIR tags: GIR 5
+• Primary stakeholders: SOC, Incident Response, Detection Engineering
+• Expected action: Hunt, tune detections, improve telemetry
+
+PIR-05 — Third-Party, Vendor, Partner, Industry, or Regional Risk
+• Intelligence question: Which third-party, vendor, partner, industry, or regional threats could materially affect us?
+• Intel 471 GIR tags: GIR 3, GIR 4, GIR 6
+• Primary stakeholders: Risk, Engineering, Incident Response
+• Expected action: Assess trust paths, monitor, restrict access
+
+PIR-06 — Optional: New or Unexpected Public Exposure
+• Intelligence question: Are approved public assets newly exposed, unexpectedly exposed, or using high-risk technology?
+• Intel 471 GIR tags: GIR 2, GIR 3
+• Primary stakeholders: Engineering, Vulnerability Management, Incident Response
+• Expected action: Validate ownership, remediate exposure
+
+────────────────────────────────────────────────────────────
+ESSENTIAL ELEMENTS OF INFORMATION — EEIs
+────────────────────────────────────────────────────────────
+
+For each PIR, collect enough information to answer:
+
+• Who is involved?
+• What is happening?
+• When did it begin or become relevant?
+• Where is the threat, asset, infrastructure, or exposure?
+• Why does it matter to us?
+• How could it affect us?
+• What action should be taken?
+• Who owns that action?
+
+────────────────────────────────────────────────────────────
+PIR TEMPLATE
+────────────────────────────────────────────────────────────
+
+PIR ID: [Enter here]
+Priority: [Enter here]
+Stakeholder: [Enter here]
+Decision / action supported: [Enter here]
+
+Question
+[Enter here]
+
+Why this matters
+[Enter here]
+
+EEIs needed
+• [Enter here]
+• [Enter here]
+• [Enter here]
+
+Collection sources
+• [Enter here]
+
+Delivery format and cadence
+• [Enter here]
+
+Urgent escalation path
+• [Enter here]
+
+Action owner
+• [Enter here]
+
+Success measure
+• [Enter here]
+
+Definition of Done
+
+☐ No more than five initial PIRs are active.
+
+☐ Every PIR has a stakeholder and action owner.
+
+☐ Every PIR has defined EEIs.
+
+☐ Every PIR has a delivery expectation.
+
+☐ Stakeholders agree the PIRs are useful.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. P1 — BUILD A CTI ASSET / TECHNOLOGY WATCHLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Goal
+Be able to answer: “Are we affected?”
+
+CTI should not manually build the entire organization’s asset inventory. Use authoritative internal sources and create a focused CTI watchlist.
+
+────────────────────────────────────────────────────────────
+PRIORITY TECHNOLOGY CATEGORIES
+────────────────────────────────────────────────────────────
+
+1. Internet-Facing Systems
+
+• VPN
+• Firewalls
+• Remote access
+• Public web applications
+• Edge appliances
+• Email gateways
+• Externally exposed cloud or admin services
+
+2. Identity and Email Systems
+
+• Identity providers
+• MFA
+• Privileged access
+• Cloud identity
+• Email platforms
+• Remote administration
+
+3. Mission-Critical Systems and Sensitive Data
+
+• Databases
+• File storage
+• Critical applications
+• Backup systems
+• Virtualization
+• Sensitive data repositories
+
+4. Endpoints, Cloud, and Third Parties
+
+• Endpoint management
+• Browsers / productivity software
+• Cloud services
+• Key vendor systems
+• Shared identity or integration points
+
+────────────────────────────────────────────────────────────
+CTI ASSET / TECHNOLOGY WATCHLIST ENTRY
+────────────────────────────────────────────────────────────
+
+Asset / technology: [Enter here]
+Business function: [Enter here]
+Criticality: High / Medium / Low
+Internet-facing: Yes / No
+Technical owner: [Enter here]
+Remediation owner: [Enter here]
+Authoritative inventory source: [Enter here]
+Notes: [Enter here]
+
+────────────────────────────────────────────────────────────
+ACTIONS
+────────────────────────────────────────────────────────────
+
+☐ Identify authoritative asset inventory sources.
+
+☐ Identify critical systems and business functions.
+
+☐ Identify public-facing systems and approved external scope.
+
+☐ Identify identity, email, cloud, remote-access, and critical technologies.
+
+☐ Identify technical and remediation owners.
+
+☐ Create a short watchlist of the highest-priority technologies.
+
+Definition of Done
+
+☐ I know where to validate whether a technology is in use.
+
+☐ I know the highest-priority systems and technologies.
+
+☐ I know who owns them.
+
+☐ I can route an affected-technology finding to the right team.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. P2 — BUILD THE THREAT PRIORITY MATRIX
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Goal
+Prioritize realistic threats to the organization — not every threat group or every technology.
+
+★ Key Rule
+Scenario first.
+Actor second.
+
+Do not start with a giant “APT list.” Start with the ways the organization could realistically be harmed.
+
+────────────────────────────────────────────────────────────
+STARTER THREAT SCENARIOS
+────────────────────────────────────────────────────────────
+
+Scenario 1 — Exploitation of Public-Facing Systems
+Vulnerable VPN, firewall, remote-access service, web application, email server, edge device, or cloud/admin service.
+
+Scenario 2 — Phishing, Credential Theft, and Identity Compromise
+Phishing, fake login pages, password spraying, MFA abuse, stolen tokens, OAuth abuse, and vendor impersonation.
+
+Scenario 3 — Ransomware / Access Broker Intrusion
+Stolen credentials, exposed remote services, exploitation, lateral movement, data theft, encryption, and extortion.
+
+Scenario 4 — Espionage / Sensitive Data Theft
+Targeted access to email, cloud data, sensitive systems, research, operational data, legal data, or personnel data.
+
+Scenario 5 — Third-Party / Supply-Chain Compromise
+Vendor access, contractor accounts, trusted integrations, shared services, or software/service-provider compromise.
+
+Scenario 6 — Public Disruption / Defacement / DDoS
+Only include if relevant. Examples include public website disruption, hacktivism, defacement, denial-of-service, or public-service interruption.
+
+────────────────────────────────────────────────────────────
+THREAT PRIORITY SCORING
+────────────────────────────────────────────────────────────
+
+Score each category from 1 to 3:
+
+• 1 = Low
+• 2 = Medium
+• 3 = High
+
+Score the following areas for each scenario:
+
+• Relevance
+• Current threat activity
+• Exposure
+• Mission impact
+• Control / detection gap
+• Total
+• Priority
+
+Public-Facing Exploitation
+Relevance: [ ]
+Current threat activity: [ ]
+Exposure: [ ]
+Mission impact: [ ]
+Control / detection gap: [ ]
+Total: [ ] / 15
+Priority: High / Medium / Low
+
+Identity / Phishing
+Relevance: [ ]
+Current threat activity: [ ]
+Exposure: [ ]
+Mission impact: [ ]
+Control / detection gap: [ ]
+Total: [ ] / 15
+Priority: High / Medium / Low
+
+Ransomware / Access Broker
+Relevance: [ ]
+Current threat activity: [ ]
+Exposure: [ ]
+Mission impact: [ ]
+Control / detection gap: [ ]
+Total: [ ] / 15
+Priority: High / Medium / Low
+
+Espionage / Data Theft
+Relevance: [ ]
+Current threat activity: [ ]
+Exposure: [ ]
+Mission impact: [ ]
+Control / detection gap: [ ]
+Total: [ ] / 15
+Priority: High / Medium / Low
+
+Third-Party Compromise
+Relevance: [ ]
+Current threat activity: [ ]
+Exposure: [ ]
+Mission impact: [ ]
+Control / detection gap: [ ]
+Total: [ ] / 15
+Priority: High / Medium / Low
+
+Suggested Interpretation
+
+• 13–15 = High priority
+• 9–12 = Medium priority
+• 5–8 = Low priority
+
+────────────────────────────────────────────────────────────
+THREAT SCENARIO CARD TEMPLATE
+────────────────────────────────────────────────────────────
+
+Scenario: [Enter here]
+Priority: [Enter here]
+
+Why this matters to the organization
+[Enter here]
+
+Critical assets / business functions affected
+• [Enter here]
+
+Likely initial access
+• [Enter here]
+
+Relevant threat categories / actors / campaigns
+• [Enter here]
+
+Common ATT&CK / adversary behaviors
+• [Enter here]
+
+Available logs and telemetry
+• [Enter here]
+
+Existing controls
+• [Enter here]
+
+Known gaps
+• [Enter here]
+
+CTI monitoring triggers
+• [Enter here]
+
+Recommended defensive actions
+• [Enter here]
+
+Action owner
+• [Enter here]
+
+Last reviewed: [Date]
+
+────────────────────────────────────────────────────────────
+WHEN TO ADD A NAMED ACTOR
+────────────────────────────────────────────────────────────
+
+Only add a named actor if at least one of these is true:
+
+☐ The actor appeared in a prior internal incident.
+
+☐ The actor targets similar organizations or close peers.
+
+☐ The actor targets our mission, geography, industry, partners, or data.
+
+☐ The actor exploits technology we actually use.
+
+☐ The actor’s behaviors require specific hunts, detections, or mitigations.
+
+Definition of Done
+
+☐ Five or fewer scenarios are prioritized.
+
+☐ Each scenario maps to critical assets or functions.
+
+☐ Each scenario has likely entry points and defensive actions.
+
+☐ Named actors are included only when they change a decision or action.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. P2 — CREATE THE COLLECTION PLAN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Goal
+Decide exactly how each PIR will be answered and what happens when relevant intelligence is found.
+
+────────────────────────────────────────────────────────────
+COLLECTION PLAN
+────────────────────────────────────────────────────────────
+
+PIR-01 — Exploited Vulnerabilities Affecting Technologies We Use
+
+• Signal / trigger: Active exploitation signal
+• Collection sources: CTI platform, trusted reporting, advisories
+• Internal validation: Vulnerability Management, CMDB, EDR, Splunk
+• Recipient: Vulnerability Management, Engineering, Incident Response
+• Action owner: [Enter here]
+• Product / delivery: Alert or ticket
+• Success measure: Affected assets identified and action tracked
+
+PIR-02 — Intelligence Supporting Active Incident Response
+
+• Signal / trigger: Active incident
+• Collection sources: IR case, SIEM, EDR, CTI platform
+• Internal validation: Splunk, EDR, DNS, endpoint data
+• Recipient: Incident Response / SOC
+• Action owner: [Enter here]
+• Product / delivery: Case support
+• Success measure: Investigation or hunt improved
+
+PIR-03 — Phishing, Credential Theft, MFA Abuse, and Account Takeover
+
+• Signal / trigger: Phishing, credential, or impersonation signal
+• Collection sources: CTI platform, approved monitoring, email logs
+• Internal validation: IAM, email logs, SIEM
+• Recipient: IAM, Email Security, Incident Response
+• Action owner: [Enter here]
+• Product / delivery: Alert or case
+• Success measure: Block, reset, revoke, investigate
+
+PIR-04 — Relevant Threat Behaviors and Defensive Gaps
+
+• Signal / trigger: Emerging TTP or campaign
+• Collection sources: CTI platform, incident lessons learned
+• Internal validation: Splunk / EDR detection review
+• Recipient: SOC, Detection Engineering
+• Action owner: [Enter here]
+• Product / delivery: Hunt or detection recommendation
+• Success measure: Detection or logging gap addressed
+
+PIR-05 — Third-Party, Vendor, Partner, Industry, or Regional Risk
+
+• Signal / trigger: Vendor or partner threat
+• Collection sources: CTI platform, approved external reporting
+• Internal validation: Vendor inventory, account/access review
+• Recipient: Risk, Engineering, Incident Response
+• Action owner: [Enter here]
+• Product / delivery: Risk notification
+• Success measure: Trust path or exposure assessed
+
+────────────────────────────────────────────────────────────
+RECOMMENDED FIRST PILOT
+────────────────────────────────────────────────────────────
+
+Use Case: Actively Exploited Vulnerability Affecting a High-Priority Technology
+
+    Receive threat signal.
+
+    Confirm the vulnerability or exploit information is credible and relevant.
+
+    Identify the affected product, version, and attack conditions.
+
+    Check authoritative internal inventory sources.
+
+    Determine whether the organization uses the technology.
+
+    Identify affected assets, exposure status, and owners.
+
+    Send an actionable alert to Vulnerability Management / Engineering.
+
+    Send hunt or investigation context to Incident Response if exploitation risk warrants it.
+
+    Track remediation, mitigation, validation, or accepted risk.
+
+    Record the outcome and stakeholder feedback.
+
+Pilot Definition of Done
+
+☐ A real or test signal completed the full workflow.
+
+☐ An affected-status decision was made.
+
+☐ An owner received a specific action.
+
+☐ The action was tracked to completion, mitigation, or documented acceptance.
+
+☐ The workflow was improved based on feedback.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9. P3 — PUBLISH INTELLIGENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+────────────────────────────────────────────────────────────
+REPORTING STANDARDS
+────────────────────────────────────────────────────────────
+
+Every report should answer the “so what?” immediately.
+
+☐ Explain why it matters to the reader.
+
+☐ Separate observed facts from analytical judgments.
+
+☐ State confidence where appropriate.
+
+☐ Include source context.
+
+☐ State whether the organization is confirmed affected, potentially affected, or not currently affected.
+
+☐ Include a clear recommended action.
+
+☐ Name the action owner.
+
+☐ Tag the report to the relevant PIR and GIR.
+
+☐ Avoid sending raw IOC lists with no context or action.
+
+────────────────────────────────────────────────────────────
+URGENT ALERT TEMPLATE
+────────────────────────────────────────────────────────────
+
+Subject
+[Priority] [Threat / Vulnerability / Campaign] affecting [Technology / Function]
+
+Why this matters
+• [Enter here]
+
+Affected status
+• Confirmed affected
+• Potentially affected
+• Not currently confirmed
+
+What we know
+
+• Threat / vulnerability:
+[Enter here]
+
+• Exploitation or targeting status:
+[Enter here]
+
+• Relevant assets / systems:
+[Enter here]
+
+• Relevant threat actor, campaign, malware, or TTPs:
+[Enter here]
+
+• Confidence / source context:
+[Enter here]
+
+Recommended actions
+
+• Vulnerability Management / Engineering:
+[Enter here]
+
+• Incident Response / SOC:
+[Enter here]
+
+• IAM / Email:
+[Enter here]
+
+• Other:
+[Enter here]
+
+Action owner
+• [Enter here]
+
+Urgency / requested completion
+• [Enter here]
+
+────────────────────────────────────────────────────────────
+SUGGESTED PRODUCT CADENCE
+────────────────────────────────────────────────────────────
+
+Urgent
+• Active exploitation
+• Confirmed exposure
+• Credible targeting
+• Incident support
+
+Weekly
+• Priority vulnerabilities
+• Threat changes
+• Phishing / identity trends
+• Significant TTPs
+• Major third-party developments
+
+Monthly
+• PIR satisfaction
+• Top threats
+• Notable trends
+• Actions completed
+• Unresolved gaps
+• Decisions needed from leadership
+
+Ad Hoc
+• Active incidents
+• Executive requests
+• High-impact events
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+10. P3 — MEASURE SUCCESS AND IMPROVE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Goal
+Measure usefulness and outcomes — not just report volume.
+
+────────────────────────────────────────────────────────────
+TRACK THESE METRICS
+────────────────────────────────────────────────────────────
+
+☐ Number of high-priority intelligence items mapped to PIRs.
+
+☐ Time from signal to relevance / affected-status decision.
+
+☐ Number of affected-asset validations completed.
+
+☐ Number of patches, mitigations, hunts, detections, or blocks triggered.
+
+☐ Number of findings routed to an identified owner.
+
+☐ Number of actions completed or accepted as risk.
+
+☐ Stakeholder usefulness rating.
+
+☐ Stakeholder feedback on timeliness and relevance.
+
+☐ PIRs supported during the reporting period.
+
+☐ Threat scenarios updated due to real incidents or environmental changes.
+
+────────────────────────────────────────────────────────────
+FEEDBACK QUESTIONS
+────────────────────────────────────────────────────────────
+
+    Was this timely?
+
+    Was this relevant to your work?
+
+    Did it help you make a decision or take action?
+
+    Was the recommended action clear?
+
+    What should be changed next time?
+
+────────────────────────────────────────────────────────────
+REVIEW RHYTHM
+────────────────────────────────────────────────────────────
+
+☐ Review urgent items after closure.
+
+☐ Review PIR support monthly.
+
+☐ Review stakeholder feedback monthly or quarterly.
+
+☐ Review and update PIRs at least quarterly.
+
+☐ Review threat scenarios when major technology, mission, or threat changes occur.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+11. DO NOT START THESE YET
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+☐ Do not build a giant named-actor / APT matrix.
+
+☐ Do not manually rebuild the full enterprise asset inventory.
+
+☐ Do not create a threat scenario for every product or application.
+
+☐ Do not enable every CTI alert or integration at once.
+
+☐ Do not automate blocking or containment before validating the workflow.
+
+☐ Do not send raw IOC lists without context, relevance, and ownership.
+
+☐ Do not broadly monitor employees, executives, partners, or external assets without approval.
+
+☐ Do not make every threat “high priority.”
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+12. FIRST SUCCESSFUL MILESTONE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Minimum Viable CTI Workflow
+
+☐ A stakeholder / action-owner map exists.
+
+☐ Three to five PIRs are documented.
+
+☐ A critical technology / asset watchlist exists.
+
+☐ Five or fewer threat scenarios are prioritized.
+
+☐ One threat signal is taken through:
+Signal → relevance → affected check → owner → action → closure
+
+☐ Feedback is collected and the workflow is improved.
