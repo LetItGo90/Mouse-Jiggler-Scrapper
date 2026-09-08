@@ -1,4 +1,52 @@
-CTI ROLE – INITIAL IDEAS AND QUESTIONS FOR CUSTOMER DISCUSSION
+CTI – Initial Ideas / Discussion Points
+
+Main goal:
+- Figure out where CTI can best support IR, vulnerability management, CDM, pentesting, and engineering.
+- I do not want to duplicate the strategic-intel work already being done.
+
+Areas I think CTI could support:
+- Threat report triage
+  - Check whether reported threats/CVEs/actors/tools actually affect us.
+  - Check IOCs and hunt in Splunk/Defender if relevant.
+  - Send useful findings to IR, vuln management, or whoever owns the issue.
+
+- Google Threat Intelligence
+  - Use it for relevant threat reporting, IOC enrichment, and monitoring.
+  - Look into Splunk integration / automatic IOC correlation.
+  - Monitor domains, lookalikes, exposed credentials, public-facing assets, etc.
+
+- Pentest support
+  - Provide a small threat-intel summary before engagements.
+  - Identify relevant actors, TTPs, vulnerabilities, initial-access methods, and tooling.
+  - Eventually could help support a more formal red-team capability.
+
+- Vulnerability / CDM support
+  - Help prioritize vulnerabilities based on active exploitation and relevance to our environment.
+  - Need access to asset/software/public-facing-system information to answer: “Does this affect us?”
+
+- Threat hunting
+  - Make current informal hunting more repeatable.
+  - Use relevant CTI to create and document hunts.
+  - Identify detection or logging gaps.
+
+- CISA weekly / monthly reporting
+  - Summarize only what is relevant and actionable.
+  - Need to confirm whether the monthly intel report is still wanted and who it is for.
+
+- External attack-surface / OSINT work
+  - Monitor public-facing agency assets, domains, impersonation, leaks, exposed credentials, etc.
+  - Need to make sure this does not overlap with existing teams/tools.
+
+- IOC blocking
+  - Move away from just blocking every IOC found online.
+  - Create clearer criteria for when CTI recommends blocking, monitoring, hunting, or doing nothing.
+
+Questions for today:
+- What are the top 2–3 things you want me focused on first?
+- What CTI work/processes already exist that I need to maintain?
+- Who are the main teams and people I should meet with?
+- What access do I need: Splunk, Defender, vuln/asset data, Google TI, etc.?
+- What would you want to see from me in the first 30 days?CTI ROLE – INITIAL IDEAS AND QUESTIONS FOR CUSTOMER DISCUSSION
 
 Purpose
 
