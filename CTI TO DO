@@ -1,49 +1,60 @@
-CTI – Initial Ideas / Discussion Points
+1. APT29 / Midnight Blizzard
 
-Main goal:
-- Figure out where CTI can best support IR, vulnerability management, CDM, pentesting, and engineering.
-- I do not want to duplicate the strategic-intel work already being done.
+Russian SVR-linked cyber-espionage actor known for long-term intelligence collection against government networks, research institutes, think tanks, diplomatic entities, and technology providers. Public reporting has associated the group with sophisticated phishing, credential theft, cloud and identity compromise, and abuse of trusted relationships or software supply chains. Relevant to federal tracking because its historic targeting includes government and policy-oriented organizations and information environments. (attack.mitre.org)
+2. APT31 / Violet Typhoon
 
-Areas I think CTI could support:
-- Threat report triage
-  - Check whether reported threats/CVEs/actors/tools actually affect us.
-  - Check IOCs and hunt in Splunk/Defender if relevant.
-  - Send useful findings to IR, vuln management, or whoever owns the issue.
+China-linked cyber-espionage actor publicly tracked as APT31, Violet Typhoon, and ZIRCONIUM. Reporting describes targeting of individuals involved in international affairs and U.S. political activity, as well as use of tailored infrastructure and phishing-linked malware delivery. Relevant to federal tracking because of its demonstrated interest in government, political, and international-affairs personnel. (learn.microsoft.com)
+3. APT41 / Brass Typhoon
 
-- Google Threat Intelligence
-  - Use it for relevant threat reporting, IOC enrichment, and monitoring.
-  - Look into Splunk integration / automatic IOC correlation.
-  - Monitor domains, lookalikes, exposed credentials, public-facing assets, etc.
+China-linked actor associated with both state-sponsored espionage and financially motivated operations. It has targeted organizations across numerous sectors—including healthcare, telecommunications, technology, finance, education, retail, and gaming—and is known for using a broad mix of custom and publicly available tools. Relevant because its operations demonstrate both strategic collection activity and adaptable intrusion capability across large enterprise environments. (attack.mitre.org)
+4. Mustang Panda / TEMP.Hex
 
-- Pentest support
-  - Provide a small threat-intel summary before engagements.
-  - Identify relevant actors, TTPs, vulnerabilities, initial-access methods, and tooling.
-  - Eventually could help support a more formal red-team capability.
+China-based cyber-espionage actor active since at least 2012. It is known for tailored phishing lures and decoy documents used to deliver malware, with publicly reported targeting of government, diplomatic, NGO, think-tank, religious, and research organizations across the United States, Europe, and Asia. Relevant because these target categories overlap with federal policy, research, and external-engagement functions. TEMP.Hex is tracked as an associated name for Mustang Panda. (attack.mitre.org)
+5. APT27 / Linen Typhoon
 
-- Vulnerability / CDM support
-  - Help prioritize vulnerabilities based on active exploitation and relevance to our environment.
-  - Need access to asset/software/public-facing-system information to answer: “Does this affect us?”
+China-linked actor also tracked as Threat Group-3390, Emissary Panda, Iron Tiger, and Linen Typhoon. Public reporting identifies strategic web compromise as a defining activity, along with credential access and collection from compromised systems. Relevant because web-based compromise and credential theft remain applicable to internet-facing federal services and enterprise identity environments. (attack.mitre.org)
+6. Volt Typhoon
 
-- Threat hunting
-  - Make current informal hunting more repeatable.
-  - Use relevant CTI to create and document hunts.
-  - Identify detection or logging gaps.
+PRC state-sponsored actor associated with targeting U.S. critical-infrastructure organizations, including in Guam. Public reporting describes stealthy, long-term access using stolen credentials, web shells, living-off-the-land tools, hands-on-keyboard activity, and compromised small-office/home-office routers used to obscure command-and-control traffic. Relevant because it illustrates threats to interconnected federal, critical-infrastructure, remote-administration, and operational-technology environments. (attack.mitre.org)
+7. Salt Typhoon
 
-- CISA weekly / monthly reporting
-  - Summarize only what is relevant and actionable.
-  - Need to confirm whether the monthly intel report is still wanted and who it is for.
+PRC state-backed actor associated with compromises of network infrastructure at major U.S. telecommunications and internet-service providers. Reporting describes activity on network devices, including creation of Linux-level accounts, manipulation of SSH authorized keys, and credential recovery from device configurations. Relevant because federal organizations rely on telecommunications providers, network infrastructure, and remote-access pathways that may be affected by this type of activity. (attack.mitre.org)
+8. UNC3886
 
-- External attack-surface / OSINT work
-  - Monitor public-facing agency assets, domains, impersonation, leaks, exposed credentials, etc.
-  - Need to make sure this does not overlap with existing teams/tools.
+China-nexus cyber-espionage actor known for advanced targeting of edge devices, network appliances, and virtualization infrastructure. Public reporting has documented exploitation of zero-day vulnerabilities and use of specialized malware against Fortinet devices, VMware ESXi/vCenter environments, and Juniper routers. Relevant because these technologies often sit outside conventional endpoint-monitoring coverage while providing broad access to enterprise systems. (attack.mitre.org)
+9. APT40 / Leviathan
 
-- IOC blocking
-  - Move away from just blocking every IOC found online.
-  - Create clearer criteria for when CTI recommends blocking, monitoring, hunting, or doing nothing.
+China-linked cyber-espionage actor also tracked as Leviathan, Gingham Typhoon, and TEMP.Periscope. Public reporting has linked the group to the use of publicly known vulnerabilities, credential theft, Active Directory enumeration, and targeting of organizations of strategic interest. Relevant because its demonstrated use of public-facing-system exploitation and enterprise discovery techniques applies to large government and partner networks. (attack.mitre.org)
+10. APT28 / Forest Blizzard
 
-Questions for today:
-- What are the top 2–3 things you want me focused on first?
-- What CTI work/processes already exist that I need to maintain?
-- Who are the main teams and people I should meet with?
-- What access do I need: Splunk, Defender, vuln/asset data, Google TI, etc.?
-- What would you want to see from me in the first 30 days?
+Russian military-intelligence actor linked to GRU Unit 26165 and also known as Forest Blizzard, Fancy Bear, and Sofacy. It has targeted defense, transportation and logistics, government, energy, NGOs, and IT organizations, with activity supporting Russian military and foreign-policy objectives. Relevant because its target set includes government institutions and organizations connected to international affairs, critical services, and policy issues. (attack.mitre.org)
+11. APT44 / Seashell Blizzard / Sandworm
+
+Russian GRU-linked destructive actor also tracked as Sandworm and Seashell Blizzard. Publicly attributed operations include attacks against Ukrainian power companies and government entities, the NotPetya incident, Olympic Destroyer, and other disruptive or destructive campaigns. Relevant because it demonstrates the potential for state-directed cyber activity to affect government operations, critical infrastructure, and widely connected enterprise environments. (attack.mitre.org)
+12. Turla
+
+Russian FSB-linked cyber-espionage actor also known as Secret Blizzard, Snake, Venomous Bear, and Uroburos. It has compromised victims in more than 50 countries across government, embassies, military, education, research, and pharmaceutical sectors, and is known for watering-hole attacks, spearphishing, and custom malware. Relevant because its historically targeted sectors include government, diplomatic, research, and policy-related organizations. (attack.mitre.org)
+13. Star Blizzard / Callisto Group
+
+Russian cyber-espionage and influence actor also known as Callisto Group, COLDRIVER, SEABORGIUM, and TA446. Public reporting describes persistent phishing and credential-theft campaigns against government, defense, NGO, academic, think-tank, and international-affairs targets, particularly in the United States and United Kingdom. Relevant because it frequently targets individuals and organizations involved in policy, research, international affairs, and security issues. (attack.mitre.org)
+14. APT42 / Mint Sandstorm
+
+Iranian-sponsored cyber-espionage and surveillance actor. Public reporting describes spearphishing, mobile malware, monitoring of compromised devices, data collection, and use of native or open-source tools for exfiltration. Relevant because Iran-linked espionage operations have targeted government, research, policy, and regional-affairs interests, including individuals rather than only technical infrastructure. (attack.mitre.org)
+15. OilRig / APT34
+
+Iran-linked actor also known as OilRig, APT34, Hazel Sandstorm, Helix Kitten, and COBALT GYPSY. Public reporting has associated the group with cyber-espionage operations and with supply-chain activity that abuses trusted relationships between organizations to reach primary targets. Relevant because federal environments depend on third-party vendors, partner organizations, and trusted communications channels that may be leveraged in this type of intrusion activity. (attack.mitre.org)
+16. Pioneer Kitten / Fox Kitten / UNC757
+
+Iran-linked actor also tracked as Fox Kitten, UNC757, Parisite, RUBIDIUM, Lemon Sandstorm, and Pioneer Kitten. It has targeted government, defense, healthcare, engineering, technology, manufacturing, and oil-and-gas organizations across North America, Europe, the Middle East, and other regions. Relevant because its activity spans government and critical-service sectors and has included access to enterprise environments through externally exposed systems. (attack.mitre.org)
+17. Kimsuky / Emerald Sleet
+
+DPRK-linked cyber-espionage actor also known as Emerald Sleet, APT43, THALLIUM, and Velvet Chollima. It has targeted South Korean government agencies, think tanks, subject-matter experts, the United Nations, and organizations in government, education, business services, and manufacturing; collection priorities include Korean Peninsula policy, nuclear issues, and sanctions. Relevant because it targets government and research personnel with specialized subject-matter knowledge. (attack.mitre.org)
+18. Lazarus Group / HIDDEN COBRA
+
+North Korean state-sponsored actor associated with the Reconnaissance General Bureau and commonly referred to by the U.S. government as HIDDEN COBRA. “Lazarus Group” is often used as an umbrella label for multiple DPRK operators involved in espionage, destructive attacks, and financially motivated cyber campaigns. Relevant because of its broad operational range, history of destructive activity, and use of phishing, malware, credential access, and supply-chain-style tradecraft. (attack.mitre.org)
+19. FIN11 / CL0P
+
+Financially motivated activity historically associated with phishing, ransomware, data theft, and extortion. Public reporting linked FIN11 to use of the CLOP ransomware in health-sector targeting; later CL0P-branded operations have also been associated with large-scale exploitation of enterprise file-transfer software. Relevant because large organizations and their vendors commonly use the externally accessible data-transfer and enterprise platforms abused in these campaigns. Naming note: FIN11 and CL0P have documented associations, but should not automatically be treated as perfectly interchangeable labels. (cisa.gov)
+20. UNC3944 / Scattered Spider / Octo Tempest
+
+Financially motivated actor also known as Scattered Spider, Octo Tempest, Roasted 0ktapus, and Storm-0875. It relies heavily on social engineering—including impersonation of IT and help-desk staff—to bypass MFA, gain access to enterprise networks, and obtain administrative access in hybrid cloud and identity platforms such as Okta, AWS, and Microsoft 365. Relevant because large organizations depend on the same help-desk, identity, contractor, SaaS, and MFA processes targeted by the group. (attack.mitre.org)
