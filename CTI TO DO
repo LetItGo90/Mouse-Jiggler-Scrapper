@@ -5,7 +5,28 @@ I have completed the initial work for PIR 1, the threat group mapping, and attac
 I also wanted to align on how you would like deliverables handled. For efforts like this, would you prefer the spreadsheet on its own, or would a short accompanying write-up be useful as well?
 
 Based on the PIR 1 mapping, I see a few follow-on efforts:
-
+| rest splunk_server=local count=0 /services/saved/searches
+| where match('action.correlationsearch.enabled',"1|[Tt]|[Tt][Rr][Uu][Ee]")
+    AND is_scheduled=1 AND disabled=0
+| rename title as "Rule Name"
+| eval Enabled="Yes"
+| fields "Rule Name" Enabled action.correlationsearch.annotations description
+| append [
+    search index=notable earliest=-12mon
+    | stats count as Fires latest(_time) as Last_Fired by search_name
+    | rename search_name as "Rule Name"
+]
+| stats values(Enabled) as Enabled
+        values(action.correlationsearch.annotations) as "ATT&CK Mapping"
+        values(description) as Description
+        sum(Fires) as Fires
+        max(Last_Fired) as Last_Fired
+        by "Rule Name"
+| eval Fires=coalesce(Fires,0)
+| eval "Fired last 12mo"=if(Fires>0,"Yes","No")
+| eval Last_Fired=if(isnull(Last_Fired),"N/A",strftime(Last_Fired,"%Y-%m-%d %H:%M:%S"))
+| table "Rule Name" Enabled "ATT&CK Mapping" "Fired last 12mo" Fires Last_Fired Description
+| sort -"Fired last 12mo" -Fires
     Threat hunting based on prioritized actor TTPs
     Comparing our current detection coverage against those TTPs to identify gaps
     Adding relevant actors from the matrix to Google TI threat profiles to support automated IOC correlation in Splunk, assuming we can get the add-on configured
