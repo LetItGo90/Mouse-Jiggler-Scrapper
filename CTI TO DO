@@ -1,34 +1,63 @@
-Hello,
+# Active Directory Attack Detection — Coverage Review
 
-I have completed the initial work for PIR 1, the threat group mapping, and attached both the actor matrix and PIR tracking spreadsheet. I kept the scope high-level and limited the number of groups so the output remains actionable. In my experience, this type of mapping can become very detailed quickly. If useful, this could become a recurring GIR that is re-evaluated every six or twelve months.
+## What this covers
 
-I also wanted to align on how you would like deliverables handled. For efforts like this, would you prefer the spreadsheet on its own, or would a short accompanying write-up be useful as well?
+In September 2026 the Australian Signals Directorate published *Detecting and mitigating Active Directory compromises*, developed with CISA, NSA, and the Canadian, UK and New Zealand cyber centres. It documents the common techniques used to compromise Active Directory, with mitigation and detection guidance for each, and includes an appendix of the specific Windows event IDs needed to detect them.
 
-Based on the PIR 1 mapping, I see a few follow-on efforts:
-| rest splunk_server=local count=0 /services/saved/searches
-| where match('action.correlationsearch.enabled',"1|[Tt]|[Tt][Rr][Uu][Ee]")
-    AND is_scheduled=1 AND disabled=0
-| rename title as "Rule Name"
-| eval Enabled="Yes"
-| fields "Rule Name" Enabled action.correlationsearch.annotations description
-| append [
-    search index=notable earliest=-12mon
-    | stats count as Fires latest(_time) as Last_Fired by search_name
-    | rename search_name as "Rule Name"
-]
-| stats values(Enabled) as Enabled
-        values(action.correlationsearch.annotations) as "ATT&CK Mapping"
-        values(description) as Description
-        sum(Fires) as Fires
-        max(Last_Fired) as Last_Fired
-        by "Rule Name"
-| eval Fires=coalesce(Fires,0)
-| eval "Fired last 12mo"=if(Fires>0,"Yes","No")
-| eval Last_Fired=if(isnull(Last_Fired),"N/A",strftime(Last_Fired,"%Y-%m-%d %H:%M:%S"))
-| table "Rule Name" Enabled "ATT&CK Mapping" "Fired last 12mo" Fires Last_Fired Description
-| sort -"Fired last 12mo" -Fires
-    Threat hunting based on prioritized actor TTPs
-    Comparing our current detection coverage against those TTPs to identify gaps
-    Adding relevant actors from the matrix to Google TI threat profiles to support automated IOC correlation in Splunk, assuming we can get the add-on configured
+We mapped our current Splunk and Defender detection rules to MITRE ATT&CK and compared them against that list. The full rule inventory and mappings are in the attached spreadsheet.
 
-More generally, for new projects or deliverables, how involved would you like to be in reviewing the proposed direction and scope? I do not want to make every small task a separate PIR or flood you with status updates, but I want to make sure you have the visibility you need. My plan is to maintain a tracking spreadsheet with the work items, status, and links to deliverables, and check in early before investing significant time in larger follow-on efforts.
+Two findings came out of it. The first is that our own detection content covers almost none of these techniques directly — but that matters far less than it looks, because Defender for Identity covers most of them natively. The second is that two configuration problems are currently undermining that Defender coverage, which is the more urgent issue.
+
+## The configuration problems
+
+**Automatic Windows auditing configuration is disabled.** In the Defender portal, under Settings → Identities → Advanced features, this is turned off. Defender for Identity depends on Windows security events to produce most of its AD detections, and the ASD guidance is explicit that several of the events needed to detect these techniques are not captured by the default Windows audit policy and require additional configuration. With this setting off, the sensors we have may not be receiving the events their detections are built on. The practical effect is that MDI detections can look healthy in the portal while having no underlying event data behind them, and there is no way to tell from the portal alone.
+
+**One eligible domain controller has no MDI sensor.** [DC name] is licensed and eligible but the sensor is not installed. Activity against that DC is not visible to MDI at all — no sensor, no data. Since most of these techniques only need to succeed against one domain controller, a single uncovered DC weakens coverage across the domain rather than just for that host.
+
+Neither of these is a detection engineering problem and neither takes long to fix, but until both are resolved we can't make a defensible statement about how much of this attack surface we actually detect.
+
+## Our current detection content
+
+We have 43 Splunk rules and 1 Defender custom rule mapped. The Splunk content is weighted heavily toward PowerShell execution, which is useful but sits at a different layer than most of these techniques — Kerberos ticket abuse, directory replication and certificate misuse largely don't surface as PowerShell activity.
+
+Measured against the guidance's technique list, our own rules directly cover one technique (password spraying) with partial coverage on two more. That's the accurate figure for *our content*, and it's the number that produced the "1 of 17" line in the earlier draft. It is not the figure for our overall coverage, because it ignores Defender entirely — which is why that draft appeared to contradict itself.
+
+## What Defender for Identity covers
+
+Assuming sensors are deployed and auditing is configured, MDI provides native detections for the majority of these techniques: Kerberoasting, AS-REP roasting, password spraying, DCSync, Golden Ticket, Silver Ticket, Skeleton Key, ntds.dit theft, unconstrained delegation, shadow credentials, and AD CS abuse where the AD CS sensor is deployed.
+
+That last one is worth verifying rather than assuming — AD CS coverage depends on the sensor being installed on the CA, which nobody has confirmed.
+
+This is the reason I'm not proposing we build Splunk rules for all of these in parallel. Duplicating MDI gives us two alerts for the same event and twice the tuning work, for no additional visibility.
+
+## Where Defender leaves gaps
+
+Six techniques fall outside what MDI covers well, and these are where our own detection content is worth spending effort.
+
+**MachineAccountQuota compromise** — no native detection. The default quota lets any authenticated user create computer accounts, which feeds several downstream attacks. Detectable via event 4741 (computer account created) filtered to non-administrative creators.
+
+**GPP password compromise** — not a detection problem. Legacy Group Policy Preferences files in SYSVOL can contain credentials that any domain user can decrypt, since the AES key is public. The fix is finding and removing them. A rule that catches someone searching for them is a backstop, not a solution.
+
+**Golden Certificate** — abuse of a stolen CA private key to forge certificates. Depends on AD CS auditing being enabled; the guidance lists AD CS events 39, 40 and 41 as relevant, covering certificates that can't be securely mapped to a user or whose SID extension doesn't match the account.
+
+**Golden SAML** — occurs at the ADFS and federation layer, so MDI can't see it by design. Closing this requires Entra ID sign-in and audit logs in Splunk, which we don't currently ingest, followed by custom correlation work. This is the largest single piece of work on the list.
+
+**Microsoft Entra Connect compromise** — same shape. Needs hybrid identity monitoring and Entra ID telemetry we don't have.
+
+**One-way domain trust bypass and SID History compromise** — MDI visibility is limited on both. SID History is detectable through events 4738 and 4742 for account modifications, and 5136 for direct attribute changes, though 5136 additionally requires Audit Directory Services Changes and a SACL on the relevant objects. Both techniques also share event 1102 (security log cleared) as an indicator, along with ntds.dit dumping and Skeleton Key — the guidance groups these because log clearing commonly follows all four.
+
+## Rules worth enabling
+
+The Splunk ES content that addresses the gaps above already exists and ships disabled by default. From the mapping work, the relevant rules cover ntds.dit extraction via ntdsutil, SID History additions across the 4738/4742 and 5136 paths, GPP credential discovery, and domain trust enumeration through dsquery and nltest. The Credential Dumping analytic story carries several shadow copy detections worth pulling in alongside the ntdsutil rule.
+
+Most of these depend on process command-line logging — Sysmon EventID 1 or 4688 with command line capture — so that's worth confirming before enabling them, otherwise they'll sit there never firing. The SID History rules also need the identity lookup populated with privileged accounts, and will produce false positives during any domain merger or migration.
+
+## Logging
+
+Appendix B of the guidance lists the specific event IDs to collect per technique, across domain controllers, member servers and AD CS. It's the most directly useful part of the document for us, and it's a better basis for the logging gap analysis than anything we'd assemble ourselves. Worth working through it against what we're actually ingesting, since that's the check that determines whether any of the above will function.
+
+## Two notes on the source
+
+The guidance describes itself as covering 17 techniques, but the table of contents lists 18 sections. Golden Certificate may be treated as part of AD CS compromise rather than as a separate technique. Worth reading the relevant sections before we quote a number anywhere.
+
+Our earlier working list of techniques didn't match the published one — it included pass-the-hash, pass-the-ticket and constrained delegation, none of which appear in the guidance, and omitted Golden Certificate and Entra Connect compromise entirely. The comparison in this report is against the actual published list. The spreadsheet has been aligned to it.
