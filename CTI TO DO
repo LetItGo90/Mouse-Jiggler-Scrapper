@@ -1,63 +1,76 @@
-# Active Directory Attack Detection — Coverage Review
+# AD Attack Detection — Coverage Overview
 
-## What this covers
+Comparison of our current detection coverage against the 17 Active Directory attack techniques in *Detecting and mitigating Active Directory compromises* (ASD, with CISA, NSA, CCCS, NCSC-UK, NCSC-NZ — September 2026).
 
-In September 2026 the Australian Signals Directorate published *Detecting and mitigating Active Directory compromises*, developed with CISA, NSA, and the Canadian, UK and New Zealand cyber centres. It documents the common techniques used to compromise Active Directory, with mitigation and detection guidance for each, and includes an appendix of the specific Windows event IDs needed to detect them.
+## What we have today
 
-We mapped our current Splunk and Defender detection rules to MITRE ATT&CK and compared them against that list. The full rule inventory and mappings are in the attached spreadsheet.
+**44 detection rules total — 43 Splunk, 1 Defender.**
 
-Two findings came out of it. The first is that our own detection content covers almost none of these techniques directly — but that matters far less than it looks, because Defender for Identity covers most of them natively. The second is that two configuration problems are currently undermining that Defender coverage, which is the more urgent issue.
+Mapped to MITRE, the Splunk content is heavily concentrated rather than broad. The large majority are ESCU PowerShell rules mapping to T1059.001 (Command and Scripting Interpreter: PowerShell), with the remainder spread thinly across process injection, WMI, masquerading and a handful of others.
 
-## The configuration problems
+Of all 44 rules, **one** maps to a technique in this guidance:
 
-**Automatic Windows auditing configuration is disabled.** In the Defender portal, under Settings → Identities → Advanced features, this is turned off. Defender for Identity depends on Windows security events to produce most of its AD detections, and the ASD guidance is explicit that several of the events needed to detect these techniques are not captured by the default Windows audit policy and require additional configuration. With this setting off, the sensors we have may not be receiving the events their detections are built on. The practical effect is that MDI detections can look healthy in the portal while having no underlying event data behind them, and there is no way to tell from the portal alone.
+| Rule | Technique | Covers |
+|---|---|---|
+| Active Directory multiple failed logon attempts from external IP | T1110.003 | Password spraying |
 
-**One eligible domain controller has no MDI sensor.** [DC name] is licensed and eligible but the sensor is not installed. Activity against that DC is not visible to MDI at all — no sensor, no data. Since most of these techniques only need to succeed against one domain controller, a single uncovered DC weakens coverage across the domain rather than just for that host.
+Full inventory and MITRE mappings are in the attached spreadsheet, with the ATT&CK Navigator layer linked separately.
 
-Neither of these is a detection engineering problem and neither takes long to fix, but until both are resolved we can't make a defensible statement about how much of this attack surface we actually detect.
+That figure isn't as alarming as it sounds, because Defender for Identity covers most of these techniques natively without us writing anything. But it does mean that if Defender is degraded, we have almost nothing of our own behind it.
 
-## Our current detection content
+## Defender for Identity — native coverage
 
-We have 43 Splunk rules and 1 Defender custom rule mapped. The Splunk content is weighted heavily toward PowerShell execution, which is useful but sits at a different layer than most of these techniques — Kerberos ticket abuse, directory replication and certificate misuse largely don't surface as PowerShell activity.
+| # | Technique | MDI |
+|---|---|---|
+| 1 | Kerberoasting | ✅ Covered |
+| 2 | AS-REP Roasting | ✅ Covered |
+| 3 | Password spraying | ✅ Covered |
+| 4 | MachineAccountQuota compromise | ❌ None |
+| 5 | Unconstrained delegation | ✅ Covered |
+| 6 | GPP password compromise | ❌ None |
+| 7 | AD CS compromise (incl. Golden Certificate) | ⚠️ Requires AD CS sensor |
+| 8 | DCSync | ✅ Covered |
+| 9 | Dumping ntds.dit | ✅ Covered |
+| 10 | Golden Ticket | ✅ Covered |
+| 11 | Silver Ticket | ✅ Covered |
+| 12 | Golden SAML | ❌ None |
+| 13 | Microsoft Entra Connect compromise | ❌ None |
+| 14 | One-way domain trust bypass | ⚠️ Limited |
+| 15 | SID History compromise | ⚠️ Limited |
+| 16 | Skeleton Key | ✅ Covered |
+| 17 | Shadow Credentials | ✅ Covered |
 
-Measured against the guidance's technique list, our own rules directly cover one technique (password spraying) with partial coverage on two more. That's the accurate figure for *our content*, and it's the number that produced the "1 of 17" line in the earlier draft. It is not the figure for our overall coverage, because it ignores Defender entirely — which is why that draft appeared to contradict itself.
+**9 covered — 3 partial — 4 not covered.**
 
-## What Defender for Identity covers
+AD CS coverage depends on the AD CS sensor being deployed. Needs confirming.
 
-Assuming sensors are deployed and auditing is configured, MDI provides native detections for the majority of these techniques: Kerberoasting, AS-REP roasting, password spraying, DCSync, Golden Ticket, Silver Ticket, Skeleton Key, ntds.dit theft, unconstrained delegation, shadow credentials, and AD CS abuse where the AD CS sensor is deployed.
+## Splunk rules we can enable
 
-That last one is worth verifying rather than assuming — AD CS coverage depends on the sensor being installed on the CA, which nobody has confirmed.
+These exist in Splunk ES and ship disabled by default.
 
-This is the reason I'm not proposing we build Splunk rules for all of these in parallel. Duplicating MDI gives us two alerts for the same event and twice the tuning work, for no additional visibility.
+| Gap | Rule |
+|---|---|
+| Dumping ntds.dit | [Ntdsutil Export NTDS](https://research.splunk.com/endpoint/da63bc76-61ae-11eb-ae93-0242ac130002/) |
+| Dumping ntds.dit | [Credential Dumping analytic story](https://research.splunk.com/stories/credential_dumping/) — shadow copy detections |
+| SID History | [Privileged Account SID History Addition](https://research.splunk.com/endpoint/6b521149-b91c-43aa-ba97-c2cac59ec830/) |
+| SID History | [Cross Domain SID History Addition](https://research.splunk.com/endpoint/41bbb371-28ba-439c-bb5c-d9930c28365d/) |
+| SID History | [Same Domain SID History Addition](https://research.splunk.com/endpoint/5fde0b7c-df7a-40b1-9b3a-294c00f0289d/) |
+| SID History | [SID History Attribute Modified](https://research.splunk.com/endpoint/1155e47d-307f-4247-beab-71071e3a458c/) |
+| One-way trust bypass | [DSQuery Domain Discovery](https://research.splunk.com/endpoint/cc316032-924a-11eb-91a2-acde48001122/) |
+| One-way trust bypass | [NLTest Domain Trust Discovery](https://research.splunk.com/endpoint/c3e05466-5f22-11eb-ae93-0242ac130002/) |
+| GPP password compromise | [Windows Findstr GPP Discovery](https://research.splunk.com/endpoint/73ed0f19-080e-4917-b7c6-56e1760a50d4/) |
 
-## Where Defender leaves gaps
+## Still uncovered
 
-Six techniques fall outside what MDI covers well, and these are where our own detection content is worth spending effort.
+**Golden SAML** — no Splunk ES rule exists. Searched and found nothing. The attack happens at the ADFS/federation layer, which is why neither MDI nor our existing content sees it. Would need Entra ID logs in Splunk and a custom rule.
 
-**MachineAccountQuota compromise** — no native detection. The default quota lets any authenticated user create computer accounts, which feeds several downstream attacks. Detectable via event 4741 (computer account created) filtered to non-administrative creators.
+**Entra Connect compromise** — same position. Hybrid identity telemetry we don't currently have.
 
-**GPP password compromise** — not a detection problem. Legacy Group Policy Preferences files in SYSVOL can contain credentials that any domain user can decrypt, since the AES key is public. The fix is finding and removing them. A rule that catches someone searching for them is a backstop, not a solution.
+**MachineAccountQuota compromise** — no MDI detection and no existing rule. Detectable via event 4741 filtered to non-admin account creation, but would need building.
 
-**Golden Certificate** — abuse of a stolen CA private key to forge certificates. Depends on AD CS auditing being enabled; the guidance lists AD CS events 39, 40 and 41 as relevant, covering certificates that can't be securely mapped to a user or whose SID extension doesn't match the account.
+## Two issues affecting all of the above
 
-**Golden SAML** — occurs at the ADFS and federation layer, so MDI can't see it by design. Closing this requires Entra ID sign-in and audit logs in Splunk, which we don't currently ingest, followed by custom correlation work. This is the largest single piece of work on the list.
+- **Automatic Windows auditing configuration is off** in the Defender portal (Settings → Identities → Advanced features). MDI depends on Windows events to produce these detections.
+- **[DC name] has no MDI sensor.** Activity against that DC isn't visible to MDI at all.
 
-**Microsoft Entra Connect compromise** — same shape. Needs hybrid identity monitoring and Entra ID telemetry we don't have.
-
-**One-way domain trust bypass and SID History compromise** — MDI visibility is limited on both. SID History is detectable through events 4738 and 4742 for account modifications, and 5136 for direct attribute changes, though 5136 additionally requires Audit Directory Services Changes and a SACL on the relevant objects. Both techniques also share event 1102 (security log cleared) as an indicator, along with ntds.dit dumping and Skeleton Key — the guidance groups these because log clearing commonly follows all four.
-
-## Rules worth enabling
-
-The Splunk ES content that addresses the gaps above already exists and ships disabled by default. From the mapping work, the relevant rules cover ntds.dit extraction via ntdsutil, SID History additions across the 4738/4742 and 5136 paths, GPP credential discovery, and domain trust enumeration through dsquery and nltest. The Credential Dumping analytic story carries several shadow copy detections worth pulling in alongside the ntdsutil rule.
-
-Most of these depend on process command-line logging — Sysmon EventID 1 or 4688 with command line capture — so that's worth confirming before enabling them, otherwise they'll sit there never firing. The SID History rules also need the identity lookup populated with privileged accounts, and will produce false positives during any domain merger or migration.
-
-## Logging
-
-Appendix B of the guidance lists the specific event IDs to collect per technique, across domain controllers, member servers and AD CS. It's the most directly useful part of the document for us, and it's a better basis for the logging gap analysis than anything we'd assemble ourselves. Worth working through it against what we're actually ingesting, since that's the check that determines whether any of the above will function.
-
-## Two notes on the source
-
-The guidance describes itself as covering 17 techniques, but the table of contents lists 18 sections. Golden Certificate may be treated as part of AD CS compromise rather than as a separate technique. Worth reading the relevant sections before we quote a number anywhere.
-
-Our earlier working list of techniques didn't match the published one — it included pass-the-hash, pass-the-ticket and constrained delegation, none of which appear in the guidance, and omitted Golden Certificate and Entra Connect compromise entirely. The comparison in this report is against the actual published list. The spreadsheet has been aligned to it.
+Until both are resolved, the coverage in the table above is what we're licensed for, not what we're actually getting.
