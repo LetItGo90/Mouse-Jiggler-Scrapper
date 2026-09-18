@@ -1,45 +1,15 @@
-Technique Recommended MDI rating Assessment
-
-1 Kerberoasting ✅ Covered Native Kerberoasting alerts, including LDAP reconnaissance and subsequent suspicious TGS requests. (learn.microsoft.com)
-2 AS-REP Roasting ✅ Covered Native AS-REP Roasting alerts. (learn.microsoft.com)
-3 Password Spraying ✅ Covered Native brute-force/password-spray detection for Kerberos and NTLM. It has behavioral/learning dependencies, so low-and-slow spraying may still justify SIEM analytics. (learn.microsoft.com)
-4 MachineAccountQuota abuse ⚠️ Partial MDI identifies nonzero MAQ as a posture problem and has alerts for suspicious Kerberos delegation by newly created computers and suspicious RBCD changes. It does not necessarily alert on every unauthorized computer-account creation, so monitor 4741 and correlated 4724/4624 separately. (learn.microsoft.com)
-5 Unconstrained Delegation ⚠️ Partial MDI has an Unsecure Kerberos delegation posture assessment, but that is exposure identification, not a comprehensive native alert for exploitation, TGT extraction or abnormal activity on the delegated server. (learn.microsoft.com)
-6 GPP Password Exposure ❌ No direct coverage No documented MDI alert for finding or reading cpassword values in SYSVOL. A scheduled scanner is likely more effective than only an event-based Splunk rule because reading SYSVOL is normal domain activity. (cyber.gov.au)
-7 AD CS Abuse ⚠️ Partial/conditional MDI has several AD CS detections, including enumeration, ESC8, ESC15 and newer exploit-specific detections. CA-side detections generally require an MDI sensor on the AD CS server and correct auditing. Coverage does not mean every ESC path is detected. (learn.microsoft.com)
-8 DCSync ✅ Covered Native DCSync/replication detection. Full coverage depends on sensors being installed on all relevant domain controllers. (learn.microsoft.com)
-9 NTDS.dit Dumping ⚠️ Partial MDI's Data exfiltration over SMB alert can detect suspicious data transfers from monitored DCs. It is not equivalent to comprehensive detection of VSS, Ntdsutil, direct file access, SYSTEM-hive collection or non-SMB exfiltration. (learn.microsoft.com)
-10 Golden Ticket ✅ Covered Multiple native Golden Ticket detections exist, including suspicious ticket and PAC-based variants. (learn.microsoft.com)
-11 Silver Ticket ✅ Covered, with limitations Native suspicious Kerberos AP-REQ/Silver Ticket detection exists. Because Silver Tickets may avoid contacting a DC, endpoint/server visibility remains important. (learn.microsoft.com)
-12 Golden SAML ⚠️ Conditional, not “none” Microsoft documents Possible Golden SAML attack, AD FS DKM-key access and suspicious AD FS certificate authentication detections. Some supporting detections require an MDI sensor on AD FS. (learn.microsoft.com)
-13 Entra Connect compromise ⚠️ Partial Your rating is reasonable. New 2026 detections include suspicious Entra Connect account authentication, sync-application Graph activity and suspicious sync-application sign-ins. They do not cover every host-level Connect compromise described in the report. (learn.microsoft.com)
-14 One-way Trust Bypass ⚠️ Indirect/limited No clearly documented dedicated “one-way trust bypass” MDI alert. Golden Ticket, SID-History and related Kerberos anomalies may detect parts of a chain, but event 4675 and trust-related correlation should be added to the SIEM. (cyber.gov.au)
-15 SID History Abuse ✅ Covered MDI documents a native Suspected SID-History injection alert and an Unsecure SID History attributes posture assessment. Supplementary event monitoring is still useful. (learn.microsoft.com)
-16 Skeleton Key ✅ Covered Native Suspected skeleton key attack (encryption downgrade) detection exists. Endpoint/process/driver telemetry should supplement it because not every Skeleton Key implementation must produce the same downgrade indicators. (learn.microsoft.com)
-17 Shadow Credentials ✅ Covered Native alerts cover shadow-credential addition and addition followed by authentication. (learn.microsoft.com)
-
-for the assessment, could you make it a bit more basic? somethign easier for me to right, doesnt need to be an essay
-View more
-12:15 PM
-Bot image for GPT-5.6-Sol
-
-GPT-5.6-Sol
-Thinking
-#	Technique	Recommended MDI rating	Simplified assessment
-1	Kerberoasting	✅ Covered	Native alerts detect Kerberoasting activity.
-2	AS-REP Roasting	✅ Covered	Native alerts detect AS-REP Roasting.
-3	Password Spraying	✅ Covered	Native alerts detect password-spray attacks, although slow attacks may be harder to detect.
-4	MachineAccountQuota abuse	⚠️ Partial	Identifies risky settings and some related attacks, but may not detect every unauthorized computer account.
-5	Unconstrained Delegation	⚠️ Partial	Identifies accounts with unsafe delegation, but does not detect all exploitation activity.
-6	GPP Password Exposure	❌ No direct coverage	No native alert for passwords exposed in Group Policy Preference files.
-7	AD CS Abuse	⚠️ Partial/conditional	Detects several AD CS attacks, but requires an AD CS sensor and correct auditing for full coverage.
-8	DCSync	✅ Covered	Native alerts detect suspicious directory replication activity.
-9	NTDS.dit Dumping	⚠️ Partial	Can detect some suspicious transfers, but not every method used to steal NTDS.dit.
-10	Golden Ticket	✅ Covered	Native alerts detect several types of Golden Ticket activity.
-11	Silver Ticket	✅ Covered, with limitations	Native alerts exist, but some activity may not be visible to domain controllers.
-12	Golden SAML	⚠️ Conditional	Native alerts exist, but some require an MDI sensor on the AD FS server.
-13	Entra Connect compromise	⚠️ Partial	Detects some suspicious Entra Connect activity, but not all methods of compromise.
-14	One-way Trust Bypass	⚠️ Indirect/limited	No dedicated alert; related Kerberos or SID activity may be detected.
-15	SID History Abuse	✅ Covered	Native alerts and posture checks detect suspicious SID History use.
-16	Skeleton Key	✅ Covered	Native alerts detect common Skeleton Key activity.
-17	Shadow Credentials	✅ Covered	Native alerts detect suspicious Shadow Credential changes and use.
+index=epa_oms_tenable sourcetype=tenable:sc:vuln earliest=-6mon cve=CVE-*
+| mvexpand cve
+| stats latest(state) as state, latest(vendor_product) as product,
+        latest(dest_fisma_system) as fisma, latest(vpr_score) as vpr,
+        latest(epssScore) as epss, latest(exploitFrameworks) as frameworks,
+        latest(xref) as xref
+  by cve, dest
+| where state="Open"
+| stats dc(dest) as hosts, values(product) as product, values(fisma) as fisma,
+        max(vpr) as vpr, max(epss) as epss, values(frameworks) as frameworks,
+        values(xref) as xref
+  by cve
+| eval kev=if(match(xref,"KNOWN-EXPLOITED"),"Yes","No")
+| fields - xref
+| sort - kev, - vpr, - hosts
