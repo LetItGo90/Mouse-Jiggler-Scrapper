@@ -1,15 +1,11 @@
-index=epa_oms_tenable sourcetype=tenable:sc:vuln earliest=-6mon cve=CVE-*
+index=epa_oms_oito_tenable sourcetype=tenable:sc:vuln earliest=-6mon cve=CVE-*
 | mvexpand cve
 | stats latest(state) as state, latest(vendor_product) as product,
         latest(dest_fisma_system) as fisma, latest(vpr_score) as vpr,
-        latest(epssScore) as epss, latest(exploitFrameworks) as frameworks,
-        latest(xref) as xref
+        latest(epssScore) as epss, latest(exploitFrameworks) as frameworks
   by cve, dest
 | where state="Open"
 | stats dc(dest) as hosts, values(product) as product, values(fisma) as fisma,
-        max(vpr) as vpr, max(epss) as epss, values(frameworks) as frameworks,
-        values(xref) as xref
+        max(vpr) as vpr, max(epss) as epss, values(frameworks) as frameworks
   by cve
-| eval kev=if(match(xref,"KNOWN-EXPLOITED"),"Yes","No")
-| fields - xref
-| sort - kev, - vpr, - hosts
+| sort - vpr, - hosts
