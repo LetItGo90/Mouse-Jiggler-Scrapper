@@ -9,3 +9,30 @@ index=epa_oms_oito_tenable sourcetype=tenable:sc:vuln earliest=-6mon cve=CVE-*
         max(vpr) as vpr, max(epss) as epss, values(frameworks) as frameworks
   by cve
 | sort - vpr, - hosts
+
+
+index=<your_index> cve=* state="<active_state>"
+| mvexpand cve
+| eval cve=upper(trim(cve))
+| where match(cve, "^CVE-[0-9]{4}-[0-9]+$")
+| eval asset=coalesce(dest_asset_id, dest_ip, dest_name, dest)
+| sort 0 - _time
+| dedup asset cve plugin_id
+| stats
+    dc(asset) AS affected_asset_count
+    values(dest_ip) AS affected_ips
+    values(dest_name) AS affected_hosts
+    values(dest_owner) AS asset_owners
+    values(plugin_name) AS vulnerability_names
+    values(dest_os) AS operating_systems
+    max(cvss3_base_score) AS cvss
+    max(vpr_score) AS vpr
+    max(epssScore) AS epss
+    max(assetExposureScore) AS exposure_score
+    max(acrScore) AS asset_criticality
+    values(exploit_available) AS exploit_available
+    values(exploit_frameworks) AS exploit_frameworks
+    values(solution) AS solutions
+    max(last_found) AS last_found
+    BY cve
+| sort - vpr - affected_asset_count
