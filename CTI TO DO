@@ -1,38 +1,30 @@
-index=epa_oms_oito_tenable sourcetype=tenable:sc:vuln earliest=-6mon cve=CVE-*
-| mvexpand cve
-| stats latest(state) as state, latest(vendor_product) as product,
-        latest(dest_fisma_system) as fisma, latest(vpr_score) as vpr,
-        latest(epssScore) as epss, latest(exploitFrameworks) as frameworks
-  by cve, dest
-| where state="Open"
-| stats dc(dest) as hosts, values(product) as product, values(fisma) as fisma,
-        max(vpr) as vpr, max(epss) as epss, values(frameworks) as frameworks
-  by cve
-| sort - vpr, - hosts
+ClickFix — Threat Brief & Recommendations
+To: [Director]; IR/Engineering · From: [you], CTI · Date:
 
+Bottom line. ClickFix is a social-engineering technique that tricks users into running the attacker's command themselves, so it slips past email filtering and file-based AV/EDR. We saw two attempts last week; endpoint caught both, but that's detection after execution. This brief covers what it is, what we're seeing, why it's hard to stop outright, and three things I recommend.
 
-index=<your_index> cve=* state="<active_state>"
-| mvexpand cve
-| eval cve=upper(trim(cve))
-| where match(cve, "^CVE-[0-9]{4}-[0-9]+$")
-| eval asset=coalesce(dest_asset_id, dest_ip, dest_name, dest)
-| sort 0 - _time
-| dedup asset cve plugin_id
-| stats
-    dc(asset) AS affected_asset_count
-    values(dest_ip) AS affected_ips
-    values(dest_name) AS affected_hosts
-    values(dest_owner) AS asset_owners
-    values(plugin_name) AS vulnerability_names
-    values(dest_os) AS operating_systems
-    max(cvss3_base_score) AS cvss
-    max(vpr_score) AS vpr
-    max(epssScore) AS epss
-    max(assetExposureScore) AS exposure_score
-    max(acrScore) AS asset_criticality
-    values(exploit_available) AS exploit_available
-    values(exploit_frameworks) AS exploit_frameworks
-    values(solution) AS solutions
-    max(last_found) AS last_found
-    BY cve
-| sort - vpr - affected_asset_count
+1. What ClickFix is. A fake error, CAPTCHA, or update page tells the user to press Win+R (or open a terminal, or paste into the Explorer address bar) and run a command that's silently on their clipboard. No attachment, no exploit — the user is the delivery mechanism. Proofpoint named it in early 2024; it's since become one of the most common initial-access techniques in the landscape, and it's no longer just commodity crime — at least three actors we already track in our threat-actor matrix (APT28, Kimsuky, and Star Blizzard) have adopted it.
+
+2. What we've seen, and what's catching it. [Two Defender alerts last week, dates/teams if useful; a few users pasted and executed.] Endpoint detection caught both. On the network side, our Defender Network Protection is already enforcing in block mode, so we have an active control we're simply not yet feeding ClickFix domains into. [Add what the commands attempted, if IR pulled it.]
+
+3. Why it's hard to defend against outright. This shapes what's realistic:
+
+It's social engineering, not a vulnerability — no file to scan, no patch to apply. The only fully preventive layer is the user.
+It mutates fast and comes in many forms — fake updates, meeting-join prompts, AI-tool setup, compliance portals — so no single block covers it.
+The newer variants dodge the obvious fixes. One uses the Explorer address bar instead of Win+R (which can't be practically disabled) and bypasses SmartScreen; another ("ConsentFix") runs no command at all — the user just approves a malicious OAuth app that survives password resets and MFA.
+Most recent lures embed the payload inline, skipping the network step — so domain blocklists catch the remainder, not the core.
+
+The takeaway: we can raise the cost and close the most common paths, but "block ClickFix" isn't a single switch. Layered controls plus user awareness is the realistic goal.
+
+4. Recommendations.
+
+Network blocklist (low effort — enforcement already on). Load the public ClickFix domain list into Defender custom network indicators. Because Network Protection is already blocking, this is just feeding it the list. Catches fetch-based variants; a backstop, not the main control.
+
+Precision endpoint controls (recommend tasking the endpoint/GPO owner).
+
+Confirm and, if needed, tighten two ASR rules that break this chain at execution (obfuscated scripts; script-launched executables). Our Defender configuration data shows ASR is broadly deployed and healthy across the managed fleet, with a small number of drifted/non-compliant devices — so this is a tuning-and-cleanup task on an existing control, not a new rollout.
+Disable the Win+R Run dialog via Group Policy. Closes the original and most common variant; won't stop the address-bar variant, which is why it's paired with the above rather than standing alone.
+
+The variants tech can't block. For the address-bar and OAuth-consent variants, the realistic controls are restricting OAuth app consent to admin approval and scenario-specific user awareness — even users who know the technique still fall for context-specific lures. Recommend [awareness owner] add ClickFix-context training.
+
+5. What I checked (so this isn't a guess). Defender configuration data shows ASR broadly deployed and compliant across the managed fleet, with minor drift worth cleaning up. Network Protection is confirmed enforcing in block mode. And the abuse path this relies on (Explorer or a browser spawning PowerShell) is effectively unused for legitimate work in our environment over the last 30 days — so tightening it carries minimal risk of breaking anything.
