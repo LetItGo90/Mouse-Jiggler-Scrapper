@@ -1,4 +1,4 @@
-index=epa_* EventCode=4688 WmiPrvSE.exe cmd.exe NOT nessus
+index=* EventCode=4688 WmiPrvSE.exe cmd.exe NOT nessus
 | rex field=Process_Command_Line "__(?<redirect_epoch>\d{9,11}\.\d+)"
 | eval redirect_time=if(isnotnull(redirect_epoch),strftime(redirect_epoch,"%Y-%m-%d %H:%M:%S"),"none (nooutput/other?)")
 | search NOT Process_Command_Line="*nessus*" NOT Account_Name="*nessus*"
