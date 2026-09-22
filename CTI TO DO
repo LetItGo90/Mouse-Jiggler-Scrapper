@@ -1,28 +1,6 @@
-let lookback = 7d;
-// Certutil or private key export activity against the CA server (potential CA key theft)
-let CAKeyExport = SecurityEvent
-| where TimeGenerated > ago(lookback)
-| where EventID == 4688
-| where CommandLine has "certutil" and (CommandLine has "-exportpfx" or CommandLine has "-exportcert" or CommandLine has "-p12" or CommandLine has "-privatekey" or CommandLine has "-backupkey")
-| project ExportTime = TimeGenerated, Computer, Account, CommandLine, EventID;
-// Certificate issuance events on the CA (4887 = issued) without a matching legitimate request (4886) shortly before,
-// or issued to high-privilege/domain admin identifiers, or with unusually long validity
-let SuspiciousIssuance = SecurityEvent
-| where TimeGenerated > ago(lookback)
-| where EventID in (4886, 4887)
-| extend CertInfoText = strcat(tostring(AdditionalInfo), " ", tostring(AdditionalInfo2))
-| extend RequesterUPN = tostring(extract(@"Requester:\s*([^\r\n]+)", 1, CertInfoText))
-| extend SubjectInfo = tostring(extract(@"Subject:\s*([^\r\n]+)", 1, CertInfoText))
-| extend ValidityPeriod = tostring(extract(@"Validity Period:\s*([^\r\n]+)", 1, CertInfoText))
-| summarize Events = make_set(EventID), FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated), Requesters = make_set(RequesterUPN, 25), Subjects = make_set(SubjectInfo, 25), Validities = make_set(ValidityPeriod, 25) by Computer
-| extend Has4886 = array_index_of(Events, 4886) != -1
-| extend Has4887 = array_index_of(Events, 4887) != -1
-| where (Has4887 and not(Has4886))
- or (Subjects has_any ("Domain Admins", "Enterprise Admins", "Administrator", "admin@"))
- or (Validities has_any ("10 Years", "20 Years", "25 Years"));
-// Correlate: certificate issuance anomalies occurring on a CA server where private key export activity was recently observed
-SuspiciousIssuance
-| join kind=inner (CAKeyExport) on Computer
-| where ExportTime between ((FirstSeen - 3d) .. (LastSeen + 1d))
-| project Computer, FirstSeen, LastSeen, Requesters, Subjects, Validities, Has4886, Has4887, ExportTime, Account, CommandLine
-| sort by LastSeen desc
+index=* EventCode=4688 WmiPrvSE.exe cmd.exe
+| rex field=Process_Command_Line "__(?<redirect_epoch>\d{9,11}\.\d+)"
+| eval redirect_time=if(isnotnull(redirect_epoch),strftime(redirect_epoch,"%Y-%m-%d %H:%M:%S"),"none (nooutput/other?)")
+| stats count min(_time) as firstTime max(_time) as lastTime
+    by host Account_Name Creator_Process_Name New_Process_Name redirect_time Process_Command_Line
+| convert ctime(firstTime) ctime(lastTime)
