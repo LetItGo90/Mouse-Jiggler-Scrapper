@@ -1,72 +1,53 @@
-ClickFix Threat Brief & Recommendations
-Sep 21, 2026 · Prepared by @Austin
-Executive Summary & Threat Landscape
-ClickFix has become one of the most prolific initial-access techniques across both cybercrime and nation-state operations. It works by inverting the usual attack model: instead of delivering an exploit or a flagged binary that our tools can scan, the attacker convinces the user to run the malicious command themselves. Because execution happens from a normal interactive user session using built-in Windows tools (PowerShell, mshta, cmd — living-off-the-land binaries), it bypasses email filtering, download inspection, SmartScreen reputation, and Mark-of-the-Web protections. There is no attachment to catch and no file written to disk at the point of entry.
-The lure is almost always a fake human-verification check (Cloudflare or reCAPTCHA imitations), a fake browser or driver update, a meeting-join error (Teams, Zoom, Google Meet), or a document-rendering error. When the user clicks to "verify" or "fix" it, hidden JavaScript silently copies an obfuscated command onto their clipboard — a technique called pastejacking — and the page then walks them through opening the Run dialog (Win+R or Win+X), pasting (Ctrl+V), and pressing Enter.
-Proofpoint named the technique in early 2024. It began as a tool of initial-access brokers delivering infostealers like Lumma, Vidar, and Stealc, but it has since been adopted by ransomware crews and by sophisticated espionage actors. That last point is why this matters to us directly: at least three actors we already track in our threat-actor matrix — APT28, Kimsuky, and Star Blizzard — have incorporated ClickFix into their operations. This is no longer just commodity crimeware.
-Our Current Posture & the Incident
-We have already seen this technique land. At least one user ran a malicious PowerShell command after being walked through opening it via the Run dialog (Win+R, or Win+X → Windows Terminal). Microsoft Defender for Endpoint blocked the follow-on activity, but the initial command still executed in the user's session — enough that the endpoint had to be isolated and reimaged before it was safe to use again. That outcome is the argument for this brief: our detection worked, but detection fires after execution. The controls below are about stopping the command from running in the first place, so we're not isolating and rebuilding machines every time a user falls for a convincing page.
-On the positive side, our environment is not starting from zero. Defender Network Protection is already enforcing in block mode across the managed fleet, and Attack Surface Reduction is broadly deployed (details and the exact posture are in "What We've Verified," below). The gaps are in tuning what we already have and adding a couple of upstream controls — not in standing up something new.
-Why It's Hard to Prevent
-The honest reason this is difficult is that it's social engineering, not a vulnerability. There's no file to scan and no patch to apply — the only fully preventive layer is the user's judgment. Everything else raises the cost and closes common paths, but nothing is a single switch that turns ClickFix off.
-It also mutates quickly, precisely because so many different actors have adopted it. It comes in many forms — fake updates, meeting-join prompts, AI-tool setup pages, compliance portals — so no single signature or block covers the whole family. Static blocklists give us fast, cheap remediation but need constant refreshing to stay useful.
-The newer variants deliberately dodge the obvious fixes. One version has users paste into the File Explorer address bar instead of the Run dialog, which sidesteps a Run-dialog block entirely and bypasses SmartScreen because content launched that way carries no Mark-of-the-Web. Another, ConsentFix, runs no command at all: the user simply approves a malicious OAuth application, which then holds persistent access to mail and files and survives both password resets and MFA. And because most recent lures embed the payload inline rather than fetching it from a server, domain blocklists catch the leftovers, not the core of the attack.
-The practical takeaway is that we should plan for layered controls plus user awareness, and be upfront that no one control — including the ones recommended here — closes every variant.
-Recommendations
-These are ordered by where they sit in the attack chain — block the lure first, then harden the endpoint, then protect identity, then train the user. No single item is sufficient; together they cover most of the realistic paths.
-1. Block the lure before it loads (ad and DNS filtering)
-ClickFix pages are delivered overwhelmingly through malicious search-engine ads — a user searches for a common tool, clicks the sponsored result, and lands on a poisoned lookalike — and through compromised legitimate sites running injected redirect scripts. Both are addressable before the user ever sees the popup. Enterprise-wide ad blocking, at the DNS layer or through a managed browser policy, removes the malvertising delivery path; it is worth doing on its own merits and happens to cut one of the primary ClickFix vectors. On top of that, filtering newly-registered and known ad-syndication domains through our secure DNS or web gateway stops many lure pages from resolving at all. This won't catch a lure hosted on a compromised trusted site, but it is the cheapest prevention we have and it shrinks the volume of malicious popups users are exposed to. It also has the advantage of not depending on the endpoint or GPO teams to implement.
-2. Network blocklist
-Several public lists of active ClickFix infrastructure are kept current by sources such as ClickFix Hunter and PrecisionSec. Because Defender Network Protection is already enforcing in block mode, adopting these is largely a matter of feeding the domains in as custom network indicators. This catches the fetch-based variants and is a backstop, not the main control — remember that most current lures embed the payload inline and skip the network step entirely.
-3. Endpoint hardening (Run dialog and script execution)
-Restricting access to the Run dialog reduces the surface for the most common variant, while preserving productivity for administrators if scoped correctly.
-The cleanest approach is the surgical registry route rather than the broad GPO setting. Under HKLM\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer, setting NoRun (DWORD) to 0x00000001 disables the Run dialog without breaking File Explorer browsing, and NoWinKeys (DWORD) to 0x00000001 suppresses the Win+R and Win+X hotkeys. Be aware that NoWinKeys disables all Windows-key shortcuts (Win+E, Win+L, Win+D and the rest), so it will inconvenience anyone who relies on them — scope it to standard end-user OUs and exclude administrative and privileged-access workstations.
-Microsoft's equivalent GPO settings — "Remove Run from Start Menu" (User Configuration → Administrative Templates → Start Menu and Taskbar) and "Turn off Windows key hotkeys" (User Configuration → Administrative Templates → Windows Components → File Explorer) — achieve the same end but are blunter: "Remove Run" also strips UNC-path resolution from the Explorer address bar and blocks convenient administrative execution paths. Either way, this only stops the Run-dialog and hotkey variants; it does not stop the address-bar variant.
-For the address-bar and script-execution paths, enforce Attack Surface Reduction rules in block mode. The two most relevant to this chain are Block execution of potentially obfuscated scripts (5beb7efe-fd9a-4556-801d-275e5ffc04cc) and Block JavaScript or VBScript from launching downloaded executable content (d3e037e1-3eb8-44c8-a917-57927947596d). A useful bonus rule, which also supports our wmiexec hunting, is Block process creations originating from PSExec and WMI commands (d1e49aac-8f56-4280-b9ba-993a6d77406c). Deploy in audit for a short window, confirm nothing legitimate breaks, then move to block. (A note on effort: system-wide PowerShell Constrained Language Mode via AppLocker or WDAC would further neuter the payloads, but it depends on application-control tooling we don't yet own — worth parking as a future step rather than a near-term recommendation.)
-4. Identity protection (ConsentFix / OAuth abuse)
-The ConsentFix variant never touches the endpoint, so endpoint controls miss it entirely — the user just approves a rogue OAuth application that then holds persistent API access to mail, files, and directory data without a password or MFA prompt. The controls that address it live in Entra ID: disable end-user consent for unverified third-party multi-tenant applications, require administrative review for any app requesting permissions beyond basic sign-in (Mail.Read, Files.ReadWrite, User.ReadWrite.All and similar), and use Conditional Access to require managed, compliant devices for token issuance so external OAuth grants from untrusted web sessions are refused. This is a distinct workstream from the endpoint work and likely a distinct owner.
-5. End-user education
-Because the whole technique depends on convincing a person to run the command themselves, training is the one control that reaches the variants we can't block technically. The single most useful thing we can teach is one durable rule: no legitimate website, error message, or IT process will ever ask you to copy a command and paste it into the Run box, a terminal, or the File Explorer address bar. If a page gives those instructions, it's an attack — close the tab and report it. That one sentence covers every current and future variant, because the paste-it-somewhere step is the part the attacker cannot remove.
-Generic phishing training won't cut it here. Even when users know ClickFix exists, context-specific lures — a Teams meeting that won't join, a browser that "needs updating," an AI-tool setup page — still drive double-digit interaction rates in simulation. So our awareness content should show the actual lures and walk through the "press Win+R, paste, Enter" sequence, so people recognize the exact moment they're being played rather than just knowing the word "ClickFix." We should weight this toward the most-targeted roles: customer-facing staff who join a lot of external meetings, and the executive, finance, and legal staff who are the main targets for the OAuth-consent variant. Finally, we need a dead-simple report path — "a website told me to paste something into my computer" should be one click, because a user who closes the tab and tells us is our earliest warning of a live campaign.
-6. macOS
-ClickFix has confirmed macOS variants that swap the PowerShell command for a Terminal curl | bash chain delivering macOS stealers such as AMOS. Most of the Windows endpoint controls above have no Mac equivalent — there is no Run dialog and no ASR, and the terminal can't be disabled — so on Mac our coverage rests on the network blocklist (which applies to both platforms through Defender), endpoint detection, and user awareness. Open item: confirm our Mac fleet size and whether Defender Network Protection is enabled and enforcing on it. If Macs are a meaningful slice of the estate, closing that gap deserves its own small workstream; if the fleet is overwhelmingly Windows, this stays a noted acknowledgment.
-What We've Verified
-Each recommendation above was checked against our own telemetry so this isn't a guess:
-Attack Surface Reduction is broadly deployed and healthy across the managed fleet. The configuration-assessment check returns the large majority of applicable devices as compliant, with a small number — on the order of a handful — showing drift worth cleaning up. A larger group of devices comes back as "not applicable" for this check; that means the assessment doesn't apply to them (down-level OS, servers, or devices not fully onboarded to this baseline), not that they lack antivirus. If we want an actual antivirus-health count, that's a separate assessment and should be pulled and confirmed in the Defender console before any number is quoted — the query below does not measure it.
-Network Protection is confirmed enforcing in block mode, not merely auditing — the block counts dwarf the audit counts over the last 30 days.
-The abuse path these controls target — Explorer or a browser spawning PowerShell — is effectively unused for legitimate work in our environment over the last 30 days. Explorer spawning wscript.exe does happen at volume (routine logon-script activity), so any tightening should target powershell.exe, cmd.exe, and mshta.exe specifically and leave wscript.exe alone. The upshot is that disabling the Run-dialog path and tightening the script-execution rules carries minimal risk of breaking legitimate activity.
-One caveat on confirming ASR: the per-rule audit/block state can't be read reliably from event telemetry alone, because a rule that's enabled but hasn't triggered looks identical to one that isn't configured. The authoritative source is the configuration-assessment data (or Get-MpPreference on a centrally-unmanaged host); where ASR is pushed by Intune or GPO, a local Get-MpPreference may return blank even though the rules are active, so treat a blank local result as inconclusive rather than as "off."
-Validation Queries
-The KQL used to check current state. Run these in Defender Advanced Hunting.
-ASR / secure-configuration posture (returns applicable-vs-not and compliant-vs-not device counts; note this is not an antivirus-enabled measure):
-DeviceTvmSecureConfigurationAssessment
-| where ConfigurationId startswith "scid-2010"
-| summarize Devices = dcount(DeviceId) by ConfigurationId, IsApplicable, IsCompliant
-| order by IsCompliant asc
-Network Protection enforcement, broken out by day so block-vs-audit is visible over time:
-DeviceEvents
-| where ActionType in ("ExploitGuardNetworkProtectionBlocked", "ExploitGuardNetworkProtectionAudited")
-| summarize
-    BlockCount = countif(ActionType == "ExploitGuardNetworkProtectionBlocked"),
-    AuditCount = countif(ActionType == "ExploitGuardNetworkProtectionAudited")
-    by bin(Timestamp, 1d)
-| order by Timestamp desc
-Which ASR rules are actually firing, and in what mode:
-DeviceEvents
-| where ActionType startswith "Asr"
-| summarize count() by ActionType
-Shell invocations matching the ClickFix paste-execution profile (scoped to the interpreters that matter, not wscript):
+// Detection: Microsoft Entra Connect (Azure AD Connect) compromise activity
+// Covers: ADSync/MSOL_ service account anomalous sign-ins, AADInternals tooling against sync account,
+// ADSync database/encryption key extraction, PTA agent registration/reinstallation events
+let SyncAccountPattern = dynamic(["MSOL_", "ADSync", "AAD_"]);
+let AADInternalsIndicators = dynamic(["AADInternals", "Get-AADIntSyncCredentials", "Export-AADIntSyncCredentials", "Get-AADIntADSyncCredentials"]);
+let ADSyncDbIndicators = dynamic(["ADSync.mdf", "ADSync_log.ldf", "mcrypt", "microsoft.identitymanagement.dll"]);
 DeviceProcessEvents
-| where InitiatingProcessFileName in~ ("explorer.exe", "chrome.exe", "msedge.exe", "wt.exe")
-| where FileName in~ ("powershell.exe", "pwsh.exe", "cmd.exe", "mshta.exe", "curl.exe")
-| where ProcessCommandLine has_any ("-enc", "-e ", "downloadstring", "invoke-webrequest", "iwr", "iex", "http://", "https://", "bypass", "hidden")
-| project Timestamp, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName
-| order by Timestamp desc
-Sources
-• Detection Chokepoints — ClickFix Techniques (variant tracking, chokepoint model, ASR GUIDs): https://iimp0ster.github.io/detection-chokepoints/chokepoints/clickfix-techniques/
-• ClickFix Hunter — active ClickFix domain list: https://clickfix.carsonww.com/
-• Proofpoint — state-sponsored actors adopting ClickFix (APT28, Kimsuky, MuddyWater, COLDRIVER): https://www.proofpoint.com/us/blog/threat-insight/around-world-90-days-state-sponsored-actors-try-clickfix
-• revel8 — ClickFix 2026 variants and simulation interaction/execution data: https://www.revel8.ai/blog/threat-research-clickfix-attacks-2026
-• Recorded Future / Insikt Group — ClickFix campaigns targeting Windows and macOS: https://www.recordedfuture.com/research/clickfix-campaigns-targeting-windows-and-macos
-• Geoff Chappell — Windows shell (Explorer) policy restrictions reference (NoRun / NoWinKeys): https://www.geoffchappell.com/studies/windows/shell/shell32/api/util/restrictions.htm
-• Microsoft — Attack Surface Reduction rules reference (rule names and GUIDs to confirm in-console before deployment): https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference
+| where TimeGenerated > ago(14d)
+| where ProcessCommandLine has_any (AADInternalsIndicators) or ProcessCommandLine has_any (ADSyncDbIndicators)
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, ReportId
+
+
+One way trust
+// Detects abuse of a Trusted Domain Object (TDO) password hash to traverse a one-way AD trust
+// - 4768/4769 Kerberos ticket requests referencing trust accounts (inter-realm indicators)
+// - 4662 DCSync-style replication rights requested against the TDO object
+SecurityEvent
+| where EventID in (4768, 4769, 4662)
+| where
+    // Kerberos TGT/service ticket requests for a trust account (trust accounts end in $ and match domain trust naming)
+    (EventID in (4768, 4769) and (TargetUserName endswith "$" or ServiceName endswith "$") and (KeyLength == 0 or isnotempty(KeyLength))) // TicketOptions is not in SecurityEvent schema, using existing field as proxy for ticket context
+    or
+    // DCSync-style replication request rights targeting an object (potential TDO secret extraction)
+    (EventID == 4662 and (Properties has "1131f6aa-9c07-11d1-f79f-00c04fc2dcd2" or Properties has "1131f6ad-9c07-11d1-f79f-00c04fc2dcd2") and ObjectType has_any ("trustedDomain", "domainDNS"))
+| extend TrustIndicator = case(
+    EventID == 4662, "DS-Replication-Get-Changes on TDO",
+    EventID in (4768, 4769), "Inter-realm ticket referencing trust account",
+    "Unknown")
+| project TimeGenerated, EventID, Computer, Account, SubjectUserName, TargetUserName, ServiceName, ObjectType, Properties, TrustIndicator, IpAddress
+| sort by TimeGenerated desc
+
+
+
+Golden Samle
+let adfsSigninAnomalies = SigninLogs
+| where AuthenticationProtocol in ("SAML", "WSFed")
+| where ResultType == "0"
+| where AuthenticationRequirement != "multiFactorAuthentication"
+| where isnotempty(tostring(NetworkLocationDetails)) or RiskLevelDuringSignIn in ("medium", "high") or tostring(AuthenticationDetails) has "unfamiliar"
+| extend DetectionType = "FederatedSignInMFABypassOrAnomalousLocation"
+| project TimeGenerated, UserPrincipalName, AppDisplayName, IPAddress, Location, AuthenticationProtocol, AuthenticationRequirement, RiskLevelDuringSignIn, ConditionalAccessStatus, DetectionType;
+let dkmContainerAccess = SecurityEvent
+| where EventID == 4662
+| where ObjectName has "ADFS" and ObjectName has "DKM"
+| extend DetectionType = "ADFS_DKM_ContainerAccess"
+| project TimeGenerated, Computer, SubjectAccount = SubjectUserName, SubjectDomainName, ObjectName, AccessMask, DetectionType;
+let adfsCertExport = SecurityEvent
+| where EventID in (4886, 4887)
+| where AdditionalInfo has "certificate" or AdditionalInfo2 has "certificate" or Activity has "Export" or Activity has "Certificate"
+| extend DetectionType = "ADFS_TokenSigningCertExportEvent"
+| project TimeGenerated, Computer, SubjectAccount = SubjectUserName, Activity, AdditionalInfo, AdditionalInfo2, DetectionType;
+union isfuzzy=true adfsSigninAnomalies, dkmContainerAccess, adfsCertExport
+| sort by TimeGenerated desc
