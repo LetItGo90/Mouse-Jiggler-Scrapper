@@ -1,53 +1,130 @@
-// Detection: Microsoft Entra Connect (Azure AD Connect) compromise activity
-// Covers: ADSync/MSOL_ service account anomalous sign-ins, AADInternals tooling against sync account,
-// ADSync database/encryption key extraction, PTA agent registration/reinstallation events
-let SyncAccountPattern = dynamic(["MSOL_", "ADSync", "AAD_"]);
-let AADInternalsIndicators = dynamic(["AADInternals", "Get-AADIntSyncCredentials", "Export-AADIntSyncCredentials", "Get-AADIntADSyncCredentials"]);
-let ADSyncDbIndicators = dynamic(["ADSync.mdf", "ADSync_log.ldf", "mcrypt", "microsoft.identitymanagement.dll"]);
+Threat Hunt Report
+Hunt title
+Impacket wmiexec Capture-Shell Redirect — WMI Lateral Movement / Remote Execution
+Analyst
+[Analyst name]
+Date
+2026-09-22
+Hunt type
+Hypothesis-driven (structured)
+
+
+
+Hypothesis
+Impacket wmiexec.py is being used for remote execution / lateral movement within EPA Windows environments. Every wmiexec command runs through a cmd.exe /Q /c capture shell that redirects stdout and stderr to \\<host>\ADMIN$\__<epoch> and reads it back over SMB. That redirect string is a tool-inherent, high-fidelity signature: a semi-interactive shell built on the fire-and-forget Win32_Process.Create method must write output somewhere it can read back, and that write appears in the command line of every command. It survives the operator rotating credentials, changing the source host, moving off the 127.0.0.1 default, and switching between password and pass-the-hash auth (only the logon changes, not the execution).
+Threat-model relevance: APT27 (Bronze Union) is documented moving laterally with native WMI, and the broader China-nexus living-off-the-land cluster tracked in the EPA threat actor matrix (Volt Typhoon, Flax Typhoon, Salt Typhoon, UNC3886) favors exactly this built-in-tooling tradecraft. wmiexec is also a first-reach tool for any actor operating with valid credentials, so it is worth hunting independent of a specific attribution.
+
+
+Scope
+Windows hosts across EPA components represented in Splunk: OIG, OMS/OITO, Region 1, Region 7 (indexes epa_oig_wineventlog_sec, epa_oms_oito_wineventlog_sec, epa_r1_wineventlog_sec, epa_r7_wineventlog_sec).
+All Microsoft Defender for Endpoint (MDE) onboarded Windows endpoints.
+Behavior in scope: WMI-based remote command execution and the immediate hands-on-keyboard session that follows it (discovery, defense evasion, credential access).
+Time window: Defender Advanced Hunting — last 30 days (retention limit). Splunk — extend per index retention for historical look-back.
+
+
+Data Sources
+Microsoft Defender for Endpoint — Advanced Hunting (DeviceProcessEvents, DeviceFileEvents). Guarantees ProcessCommandLine and InitiatingProcessFileName (parent) on every row with no configuration. ~30-day retention. Coverage limited to onboarded hosts only.
+Splunk — Windows Security Event Logs (EventCode 4688). sourcetype WinEventLog. No Sysmon present, so no EventCode 1 — this is EventCode 4688 only. Command-line visibility is contingent on the "Include command line in process creation events" GPO; must be verified before the primary Splunk query can work (see Intelligence Gaps).
+
+
+Queries Ran
+Query run
+Data Source
+Rules
 DeviceProcessEvents
-| where TimeGenerated > ago(14d)
-| where ProcessCommandLine has_any (AADInternalsIndicators) or ProcessCommandLine has_any (ADSyncDbIndicators)
-| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, ReportId
+| where ProcessCommandLine contains "/Q /c"
+    and ProcessCommandLine contains @"\ADMIN$\__"
+| extend redirect_epoch = extract(@"\\ADMIN\$\\__(\d{9,11}\.\d+)", 1, ProcessCommandLine)
+| extend redirect_time_utc = unixtime_seconds_todatetime(todouble(redirect_epoch))
+| project redirect_time_utc, Timestamp, DeviceName, AccountName,
+    InitiatingProcessFileName, FileName, ProcessCommandLine,
+    InitiatingProcessRemoteSessionDeviceName
+| sort by redirect_time_utc asc
+Defender AH / MS Sentinel
+(DeviceProcessEvents)
+Primary — redirect signature; core hunt
+DeviceProcessEvents
+| where InitiatingProcessFileName =~ "WmiPrvSE.exe"
+    and FileName =~ "cmd.exe"
+| summarize CommandCount=count(), FirstSeen=min(Timestamp),
+    LastSeen=max(Timestamp), Commands=make_set(ProcessCommandLine, 50)
+    by DeviceName, AccountName
+| sort by LastSeen desc
+Defender AH / MS Sentinel
+(DeviceProcessEvents)
+Fallback — WmiPrvSE->cmd lineage; only catch for -nooutput
+DeviceFileEvents
+| where FolderPath matches regex @"(?i)\Windows\__\d{9,11}\.\d+"
+| project Timestamp, DeviceName, InitiatingProcessAccountName,
+    FileName, FolderPath, InitiatingProcessFileName
+| sort by Timestamp desc
+Defender AH / MS Sentinel
+(DeviceFileEvents)
+Secondary — __<epoch> file dropped in C:\Windows
+index=epa_* EventCode=4688 Process_Command_Line=*
+| stats count by index
+Splunk
+(WinEventLog, epa_* indexes)
+Prerequisite — verifies 4688 cmdline auditing is on
+index=epa_* EventCode=4688 Process_Command_Line="*/Q /c*"
+    Process_Command_Line="*ADMIN$*"
+| rex field=Process_Command_Line "__(?<redirect_epoch>\d{9,11}\.\d+)"
+| eval redirect_time=strftime(redirect_epoch,"%Y-%m-%d %H:%M:%S")
+| stats count min(_time) as firstTime max(_time) as lastTime
+    by host Account_Name Creator_Process_Name New_Process_Name
+       redirect_time Process_Command_Line
+| convert ctime(firstTime) ctime(lastTime)
+Splunk
+(WinEventLog, epa_* indexes)
+Primary (Splunk) — runs only if cmdline auditing confirmed
 
 
-One way trust
-// Detects abuse of a Trusted Domain Object (TDO) password hash to traverse a one-way AD trust
-// - 4768/4769 Kerberos ticket requests referencing trust accounts (inter-realm indicators)
-// - 4662 DCSync-style replication rights requested against the TDO object
-SecurityEvent
-| where EventID in (4768, 4769, 4662)
-| where
-    // Kerberos TGT/service ticket requests for a trust account (trust accounts end in $ and match domain trust naming)
-    (EventID in (4768, 4769) and (TargetUserName endswith "$" or ServiceName endswith "$") and (KeyLength == 0 or isnotempty(KeyLength))) // TicketOptions is not in SecurityEvent schema, using existing field as proxy for ticket context
-    or
-    // DCSync-style replication request rights targeting an object (potential TDO secret extraction)
-    (EventID == 4662 and (Properties has "1131f6aa-9c07-11d1-f79f-00c04fc2dcd2" or Properties has "1131f6ad-9c07-11d1-f79f-00c04fc2dcd2") and ObjectType has_any ("trustedDomain", "domainDNS"))
-| extend TrustIndicator = case(
-    EventID == 4662, "DS-Replication-Get-Changes on TDO",
-    EventID in (4768, 4769), "Inter-realm ticket referencing trust account",
-    "Unknown")
-| project TimeGenerated, EventID, Computer, Account, SubjectUserName, TargetUserName, ServiceName, ObjectType, Properties, TrustIndicator, IpAddress
-| sort by TimeGenerated desc
+
+Key Findings
+[To be completed after execution.]
+Suggested structure per hit: host, account, source host (InitiatingProcessRemoteSessionDeviceName), session start/end reconstructed from redirect_epoch, and the ordered command sequence. Flag any session containing the discovery -> AV discovery -> Defender-disable -> SAM-dump progression as high priority.
 
 
+Intelligence Gaps
+Unconfirmed whether 4688 command-line auditing is enabled on EPA Windows hosts. If the GPO is off, Splunk cannot match the redirect signature and Splunk coverage collapses to process-name lineage only. Verify: index=epa_* EventCode=4688 Process_Command_Line=* | stats count by index
+MDE sensor coverage is unknown. Hosts not onboarded (legacy servers, domain controllers, appliances) are invisible to Defender — and these are frequent lateral-movement targets. Splunk WinEventLog may cover some of these; confirm overlap.
+wmiexec.py -nooutput mode drops the redirect entirely: no ADMIN$\__ in the command line and no file written to C:\Windows. Both the command-line signature and the file-create signal miss it; only the WmiPrvSE.exe -> cmd.exe lineage query catches this variant.
+No Sysmon means no EventCode 1 and reliance on 4688, which is noisier and GPO-dependent. Consider Sysmon deployment as a follow-on recommendation.
+Defender AH 30-day retention limits historical look-back; older activity is only visible in Splunk if retained and command lines are present.
 
-Golden Samle
-let adfsSigninAnomalies = SigninLogs
-| where AuthenticationProtocol in ("SAML", "WSFed")
-| where ResultType == "0"
-| where AuthenticationRequirement != "multiFactorAuthentication"
-| where isnotempty(tostring(NetworkLocationDetails)) or RiskLevelDuringSignIn in ("medium", "high") or tostring(AuthenticationDetails) has "unfamiliar"
-| extend DetectionType = "FederatedSignInMFABypassOrAnomalousLocation"
-| project TimeGenerated, UserPrincipalName, AppDisplayName, IPAddress, Location, AuthenticationProtocol, AuthenticationRequirement, RiskLevelDuringSignIn, ConditionalAccessStatus, DetectionType;
-let dkmContainerAccess = SecurityEvent
-| where EventID == 4662
-| where ObjectName has "ADFS" and ObjectName has "DKM"
-| extend DetectionType = "ADFS_DKM_ContainerAccess"
-| project TimeGenerated, Computer, SubjectAccount = SubjectUserName, SubjectDomainName, ObjectName, AccessMask, DetectionType;
-let adfsCertExport = SecurityEvent
-| where EventID in (4886, 4887)
-| where AdditionalInfo has "certificate" or AdditionalInfo2 has "certificate" or Activity has "Export" or Activity has "Certificate"
-| extend DetectionType = "ADFS_TokenSigningCertExportEvent"
-| project TimeGenerated, Computer, SubjectAccount = SubjectUserName, Activity, AdditionalInfo, AdditionalInfo2, DetectionType;
-union isfuzzy=true adfsSigninAnomalies, dkmContainerAccess, adfsCertExport
-| sort by TimeGenerated desc
+
+Notes
+The __<epoch> filename is time.time() from the operator's host at command send-time. Extract it (redirect_epoch) and sort ascending to reconstruct the session as a keystroke transcript, independent of sensor timestamps.
+Secondary signal: the output file lands in C:\Windows as __<number> and is deleted immediately after the read. A file-create rule on C:\Windows\__<digits> catches sessions even when the command line is obfuscated.
+Default UNC host is 127.0.0.1 but is operator-configurable — do not pin the hunt to loopback. The /Q /c + ADMIN$\__ pair is the durable anchor.
+Expected false-positive rate is near zero: legitimate software does not redirect output to \\...\ADMIN$\__<number>. Both KQL and SPL queries are promotable to detections largely unchanged if the hunt validates.
+Existing coverage gap: the ESCU rule "PowerShell Invoke WmiExec Usage" keys on the string invoke-wmiexec in 4104 script-block logs — that catches the PowerShell Invoke-TheHash tool, not Impacket wmiexec.py. This hunt covers the Impacket behavioral pattern the rule cannot see.
+
+
+ATT&CK Mapping
+Technique
+Name
+Role in hunt
+T1047
+Windows Management Instrumentation
+Execution primitive — how wmiexec runs commands
+T1021.003
+Remote Services: DCOM
+wmiexec authenticates / invokes over DCOM
+T1021.002
+Remote Services: SMB / Windows Admin Shares
+ADMIN$ used to retrieve command output
+T1059.003
+Command & Scripting Interpreter: Windows Command Shell
+cmd.exe /Q /c capture shell
+T1518.001
+Security Software Discovery
+Observed follow-on — SecurityCenter2 AV query
+T1562.001
+Impair Defenses: Disable or Modify Tools
+Observed follow-on — Set-MpPreference disable Defender (ESCU rules tag this T1685)
+T1003.002
+OS Credential Dumping: SAM
+Observed follow-on — reg save hklm\sam
+
+
