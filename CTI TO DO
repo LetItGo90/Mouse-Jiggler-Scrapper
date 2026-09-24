@@ -1,7 +1,10 @@
-index=* EventCode=4688 WmiPrvSE.exe cmd.exe NOT nessus
-| rex field=Process_Command_Line "__(?<redirect_epoch>\d{9,11}\.\d+)"
-| eval redirect_time=if(isnotnull(redirect_epoch),strftime(redirect_epoch,"%Y-%m-%d %H:%M:%S"),"none (nooutput/other?)")
-| search NOT Process_Command_Line="*nessus*" NOT Account_Name="*nessus*"
-| stats count min(_time) as firstTime max(_time) as lastTime
-    by host Account_Name Creator_Process_Name New_Process_Name redirect_time Process_Command_Line
-| convert ctime(firstTime) ctime(lastTime)
+| tstats summariesonly=t count min(_time) as firstTime max(_time) as lastTime
+    from datamodel=Network_Resolution
+    where nodename=DNS DNS.message_type=Query
+    by DNS.src DNS.query
+| `drop_dm_object_name("DNS")`
+| lookup rmm_domains URI AS query OUTPUT RMM_Tool
+| where isnotnull(RMM_Tool)
+| `security_content_ctime(firstTime)`
+| `security_content_ctime(lastTime)`
+| sort - count
