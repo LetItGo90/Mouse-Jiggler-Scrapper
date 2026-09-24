@@ -1,10 +1,41 @@
+let LOLDrivers = externaldata (Category:string, KnownVulnerableSamples:dynamic, Verified:string)
+    [@"https://www.loldrivers.io/api/drivers.json"] with (format="multijson")
+| mv-expand KnownVulnerableSamples
+| extend SHA1 = tostring(KnownVulnerableSamples.SHA1), SHA256 = tostring(KnownVulnerableSamples.SHA256)
+;
+DeviceEvents
+| where ActionType == "DriverLoad"
+| join kind=inner (LOLDrivers | where isnotempty(SHA256)) on SHA256
+| union (
+    DeviceEvents
+    | where ActionType == "DriverLoad"
+    | join kind=inner (LOLDrivers | where isnotempty(SHA1)) on SHA1
+)
+
+
 | tstats summariesonly=t count min(_time) as firstTime max(_time) as lastTime
     from datamodel=Network_Resolution
     where nodename=DNS DNS.message_type=Query
     by DNS.src DNS.query
 | `drop_dm_object_name("DNS")`
-| lookup rmm_domains URI AS query OUTPUT RMM_Tool
-| where isnotnull(RMM_Tool)
+| lookup rmm_tools URI AS query OUTPUT RMM_Tool
+| where isnotnull(RMM_Tool) AND RMM_Tool!="GitHub"
+| stats count min(firstTime) as firstTime max(lastTime) as lastTime
+    values(query) as domains by src, RMM_Tool
 | `security_content_ctime(firstTime)`
 | `security_content_ctime(lastTime)`
 | sort - count
+
+
+| tstats summariesonly=t count from datamodel=Network_Resolution
+    where nodename=DNS DNS.message_type=Query by DNS.src DNS.query
+| `drop_dm_object_name("DNS")`
+| lookup rmm_tools URI AS query OUTPUT RMM_Tool
+| where isnotnull(RMM_Tool) AND RMM_Tool!="GitHub"
+| fields src
+| dedup src
+| map search="| tstats count min(_time) as firstTime max(_time) as lastTime
+    values(All_Traffic.dest_port) as dest_port latest(user) as user
+    from datamodel=Network_Traffic
+    where All_Traffic.src=$src$
+    by All_Traffic.src All_Traffic.dest All_Traffic.app"
